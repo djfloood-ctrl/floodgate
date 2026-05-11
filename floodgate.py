@@ -377,6 +377,7 @@ class FloodGate(ctk.CTk):
 
             card=tk.Frame(rf,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
             card.pack(side="left",padx=4,fill="x",expand=True)
+            card.video_name = vid.name
 
             tr=tk.Frame(card,bg=CARD_BG);tr.pack(fill="x",padx=8,pady=(8,0))
             sc="★" if is_fav else "☆";sco=STAR_GOLD if is_fav else GRAY
@@ -440,12 +441,15 @@ class FloodGate(ctk.CTk):
             self.meta._save();self._refresh_browse()
     def _toggle_fav(self,vp):
         self.meta.toggle_favorite(vp.name)
-        # Update just the star in-place without rebuilding
+        is_fav = self.meta.is_favorite(vp.name)
+        # Update star in-place if card exists
         if vp.name in self._star_labels:
             lbl = self._star_labels[vp.name]
             if lbl.winfo_exists():
-                is_fav = self.meta.is_favorite(vp.name)
                 lbl.config(text="★" if is_fav else "☆", fg=STAR_GOLD if is_fav else GRAY)
+        # If in favorites folder and unfavorited, refresh the folder view
+        if self.browse_folder.get() == "favorites" and not is_fav:
+            self._refresh_browse()
     def _view(self,vp):
         self.meta.increment_views(vp.name)
         if platform.system()=="Windows": os.startfile(str(vp))
