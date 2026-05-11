@@ -194,6 +194,7 @@ class FloodGate(ctk.CTk):
         self.browse_tag=tk.StringVar(value="all")
         self.browse_folder=tk.StringVar(value="all")
         self.browse_search=tk.StringVar(value="")
+        self.browse_search.trace_add("write", lambda *a: self._filter_search())
         self.fmt_var=tk.StringVar(value=self.config.get("settings",{}).get("format","Instagram Reel"))
         self.len_var=tk.IntVar(value=self.config.get("settings",{}).get("clip_length",30))
 
@@ -204,7 +205,9 @@ class FloodGate(ctk.CTk):
 
         self.bind("<F11>",lambda e:self.attributes("-fullscreen",not self.attributes("-fullscreen")))
         self._live_polling = False
+        self._last_browse_state = None
         self._star_labels = {}
+        self._card_widgets = {}  # video_name -> {star, tags_frame, folder_label, card_frame}
         self._build_ui()
         self.bind("<Control-r>",lambda e:self._run_remixer())
         self.bind("<Control-R>",lambda e:self._run_remixer())
@@ -247,7 +250,8 @@ class FloodGate(ctk.CTk):
         for n,f in self.tabs.items(): f.pack_forget()
         if name in self.tabs: self.tabs[name].pack(fill="both",expand=True)
         for n,b in self.tab_btns.items(): b.config(fg=TAB_ACTIVE if n==name else TAB_INACTIVE)
-        if name=="BROWSE" and not self._live_polling: self._refresh_browse()
+        if name=="BROWSE" and not hasattr(self, '_browse_loaded'):
+            self._refresh_browse()  # first load only
 
     def _build_assets(self):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["ASSETS"]=tab
@@ -301,11 +305,11 @@ class FloodGate(ctk.CTk):
         ma=tk.Frame(tab,bg=BG_RED);ma.pack(side="left",fill="both",expand=True)
         ctr=tk.Frame(ma,bg=BG_RED);ctr.pack(fill="x",padx=12,pady=(8,4))
         tk.Label(ctr,text="BROWSE",font=("Helvetica Neue",14,"bold"),fg=WHITE,bg=BG_RED).pack(side="left")
-        HoverButton(ctr,text="↻",font=("Courier New",9,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=10,pady=3,cursor="hand2",command=self._refresh_browse).pack(side="right",padx=2)
+        HoverButton(ctr,text="↻",font=("Courier New",9,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=10,pady=3,cursor="hand2",command=lambda:self._refresh_browse()).pack(side="right",padx=2)  # MANUAL REFRESH ONLY
         tk.Entry(ctr,textvariable=self.browse_search,font=("Courier New",8),bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,width=18,highlightthickness=1,highlightcolor=BORDER).pack(side="right",padx=2,ipady=2)
         sr=tk.Frame(ma,bg=BG_RED);sr.pack(fill="x",padx=12,pady=(0,4))
         for l,v in [("DATE ↓","date_desc"),("★","favs_first"),("NAME","name_asc")]:
-            tk.Radiobutton(sr,text=l,variable=self.browse_sort,value=v,font=("Courier New",6),fg=WHITE,bg=BG_RED,selectcolor=DARK_RED,activebackground=BG_RED,activeforeground=WHITE,bd=0,indicatoron=0,padx=4,pady=1,command=self._refresh_browse).pack(side="left")
+            tk.Radiobutton(sr,text=l,variable=self.browse_sort,value=v,font=("Courier New",6),fg=WHITE,bg=BG_RED,selectcolor=DARK_RED,activebackground=BG_RED,activeforeground=WHITE,bd=0,indicatoron=0,padx=4,pady=1,command=lambda:self._full_rebuild()).pack(side="left")
         tk.Label(sr,text="SORT:",font=("Courier New",6,"bold"),fg=GRAY,bg=BG_RED).pack(side="left")
 
         self.bcv=tk.Canvas(ma,bg=BG_RED,highlightthickness=0)
@@ -319,7 +323,18 @@ class FloodGate(ctk.CTk):
         def _mw(e): self.bcv.yview_scroll(int(-1*(e.delta/120)),"units")
         self.bcv.bind("<Enter>",lambda e:self.bcv.bind_all("<MouseWheel>",_mw))
         self.bcv.bind("<Leave>",lambda e:self.bcv.unbind_all("<MouseWheel>"))
-        self._refresh_browse()
+        self._refresh_browse()  # initial load
+
+    def _filter_search(self):
+        q = self.browse_search.get().lower()
+        for vname, wdata in list(self._card_widgets.items()):
+            card = wdata['frame']
+            if not card.winfo_exists(): continue
+            if not q or q in vname.lower():
+                card.pack(side="left",padx=4,fill="x",expand=True)
+                card.master.pack(fill="x",padx=8,pady=4)
+            else:
+                card.pack_forget()
 
     def _refresh_folders_tags(self):
         self.flb.delete(0,"end")
@@ -335,18 +350,88 @@ class FloodGate(ctk.CTk):
         sel=self.flb.curselection()
         if sel:
             ft=self.flb.get(sel[0]).strip();f=ft.replace("[TRASH]","").strip()
-            self.browse_folder.set(f);self.browse_tag.set("all");self._refresh_browse()
+            self.browse_folder.set(f);self.browse_tag.set("all")
+            # Filter cards in-place instead of rebuilding
+            folder = self.browse_folder.get()
+            for vname, wdata in list(self._card_widgets.items()):
+                card = wdata['frame']
+                if not card.winfo_exists(): continue
+                if folder == "all":
+                    card.pack(side="left",padx=4,fill="x",expand=True)
+                    card.master.pack(fill="x",padx=8,pady=4)
+                elif folder == "favorites":
+                    if self.meta.is_favorite(vname):
+                        card.pack(side="left",padx=4,fill="x",expand=True)
+                        card.master.pack(fill="x",padx=8,pady=4)
+                    else:
+                        card.pack_forget()
+                elif folder == "trash":
+                    card.pack_forget()
+                elif self.meta.get_folder(vname) == folder:
+                    card.pack(side="left",padx=4,fill="x",expand=True)
+                    card.master.pack(fill="x",padx=8,pady=4)
+                else:
+                    card.pack_forget()
+            self._refresh_folders_tags()
 
     def _on_tag(self,event=None):
         sel=self.tlb.curselection()
-        if sel: self.browse_tag.set(self.tlb.get(sel[0]).strip());self._refresh_browse()
+        if sel:
+            self.browse_tag.set(self.tlb.get(sel[0]).strip())
+            tag = self.browse_tag.get()
+            for vname, wdata in list(self._card_widgets.items()):
+                card = wdata['frame']
+                if not card.winfo_exists(): continue
+                if tag == "all" or tag in self.meta.get_tags(vname):
+                    card.pack(side="left",padx=4,fill="x",expand=True)
+                    card.master.pack(fill="x",padx=8,pady=4)
+                else:
+                    card.pack_forget()
+            self._refresh_folders_tags()
 
     def _new_folder(self):
         n=simpledialog.askstring("New Folder","Folder name:")
-        if n and n.lower()!="trash": self.browse_folder.set(n);self._refresh_folders_tags();self._refresh_browse()
+        if n and n.lower()!="trash": self.browse_folder.set(n);self._refresh_folders_tags()
+
+    def _full_rebuild(self):
+        self._refresh_browse()
+
+    def _filter_folder(self):
+        folder = self.browse_folder.get()
+        tag = self.browse_tag.get()
+        for vname, wdata in list(self._card_widgets.items()):
+            card = wdata['frame']
+            if not card.winfo_exists(): continue
+            show = True
+            if folder == "favorites" and not self.meta.is_favorite(vname): show = False
+            elif folder == "trash": show = False
+            elif folder not in ("all","favorites") and self.meta.get_folder(vname) != folder: show = False
+            if tag != "all" and tag not in self.meta.get_tags(vname): show = False
+            if show:
+                card.pack(side="left",padx=4,fill="x",expand=True)
+                card.master.pack(fill="x",padx=8,pady=4)
+            else:
+                card.pack_forget()
+        self._refresh_folders_tags()
+
+    def _update_tags_inplace(self, vp):
+        if vp.name in self._card_widgets and 'tags' in self._card_widgets[vp.name]:
+            tf = self._card_widgets[vp.name]['tags']
+            for w in tf.winfo_children(): w.destroy()
+            for t in self.meta.get_tags(vp.name)[:3]:
+                ci=hash(t)%len(TAG_COLORS)
+                TagChip(tf,t,TAG_COLORS[ci],on_remove=lambda tag,v=vp:self._remove_tag(v,tag)).pack(side="left",padx=1)
+        self._refresh_folders_tags()
+
+    def _update_folder_inplace(self, vp, folder):
+        if vp.name in self._card_widgets and 'folder' in self._card_widgets[vp.name]:
+            flbl = self._card_widgets[vp.name]['folder']
+            flbl.config(text=f"[{folder}]")
 
     def _refresh_browse(self):
         self._star_labels.clear()
+        self._card_widgets.clear()
+        self._browse_loaded = True
         for w in self.bframe.winfo_children(): w.destroy()
         folder=self.browse_folder.get();tag=self.browse_tag.get()
         if folder=="trash": videos=list(TRASH_DIR.glob("*.mp4"));tm=True
@@ -378,12 +463,14 @@ class FloodGate(ctk.CTk):
             card=tk.Frame(rf,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
             card.pack(side="left",padx=4,fill="x",expand=True)
             card.video_name = vid.name
+            card_data = {'frame': card}
 
             tr=tk.Frame(card,bg=CARD_BG);tr.pack(fill="x",padx=8,pady=(8,0))
             sc="★" if is_fav else "☆";sco=STAR_GOLD if is_fav else GRAY
             sl=tk.Label(tr,text=sc,font=("Helvetica Neue",12),fg=sco,bg=CARD_BG,cursor="hand2")
             sl.pack(side="left");sl.bind("<Button-1>",lambda e,v=vid:self._toggle_fav(v))
             self._star_labels[vid.name] = sl
+            card_data['star'] = sl
             db=tk.Label(tr,text="✖",font=("Helvetica Neue",12,"bold"),fg=TRASH_RED,bg=CARD_BG,cursor="hand2")
             db.pack(side="right")
             if tm:db.bind("<Button-1>",lambda e,v=vid:self._delete_forever_confirm(v))
@@ -395,14 +482,17 @@ class FloodGate(ctk.CTk):
             tk.Label(card,text=dt,font=("Courier New",7),fg=GRAY,bg=CARD_BG).pack()
             tk.Label(card,text=f"{human_size(vid.stat().st_size)}  •  {views} views",font=("Courier New",7),fg=GRAY,bg=CARD_BG).pack()
 
-            if fn and fn!="all" and not tm:tk.Label(card,text=f"[{fn}]",font=("Courier New",7),fg=ACCENT,bg=CARD_BG).pack()
+            if fn and fn!="all" and not tm:
+                flbl=tk.Label(card,text=f"[{fn}]",font=("Courier New",7),fg=ACCENT,bg=CARD_BG)
+                flbl.pack();card_data['folder']=flbl
             if tl and not tm:
-                tr2=tk.Frame(card,bg=CARD_BG);tr2.pack(pady=(4,2))
+                tr2=tk.Frame(card,bg=CARD_BG);tr2.pack(pady=(4,2));card_data['tags']=tr2
                 for t in tl[:3]:
                     ci=hash(t)%len(TAG_COLORS)
                     TagChip(tr2,t,TAG_COLORS[ci],on_remove=lambda tag,v=vid:self._remove_tag(v,tag)).pack(side="left",padx=1)
 
             br2=tk.Frame(card,bg=CARD_BG);br2.pack(pady=(6,10))
+            self._card_widgets[vid.name] = card_data
             if not tm:
                 HoverButton(br2,text="VIEW",font=("Courier New",7,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=8,pady=2,command=lambda p=vid:self._view(p)).pack(side="left",padx=2)
                 HoverButton(br2,text="TAG",font=("Courier New",7,"bold"),fg=BLACK,bg=UPLOAD_BLUE,bd=0,padx=8,pady=2,command=lambda p=vid:self._tag(p)).pack(side="left",padx=2)
@@ -416,7 +506,19 @@ class FloodGate(ctk.CTk):
     def _move_trash_instant(self, vp):
         TRASH_DIR.mkdir(parents=True,exist_ok=True);d=TRASH_DIR/vp.name
         if vp.exists(): shutil.move(str(vp),str(d))
-        self.meta.set_folder(vp.name,"trash");self._refresh_browse()
+        self.meta.set_folder(vp.name,"trash")
+        # Remove card in-place
+        if vp.name in self._card_widgets:
+            card = self._card_widgets[vp.name]['frame']
+            if card.winfo_exists():
+                parent = card.master
+                card.destroy()
+                if vp.name in self._star_labels: del self._star_labels[vp.name]
+                del self._card_widgets[vp.name]
+                # If parent row is now empty, remove it
+                if len(parent.winfo_children()) == 0:
+                    parent.destroy()
+        self._refresh_folders_tags()
 
     def _delete_forever_confirm(self, vp):
         if messagebox.askyesno("Delete Forever",f"Permanently delete {vp.name}?\nThis cannot be undone."):
@@ -427,18 +529,29 @@ class FloodGate(ctk.CTk):
     def _restore(self,vp):
         d=OUTPUT_DIR/vp.name
         if vp.exists(): shutil.move(str(vp),str(d))
-        self.meta.set_folder(vp.name,"all");self._refresh_browse()
+        self.meta.set_folder(vp.name,"all")
+        # In-place remove from trash view
+        if vp.name in self._card_widgets:
+            card = self._card_widgets[vp.name]['frame']
+            if card.winfo_exists():
+                parent = card.master
+                card.destroy()
+                if vp.name in self._star_labels: del self._star_labels[vp.name]
+                del self._card_widgets[vp.name]
+                if len(parent.winfo_children()) == 0:
+                    parent.destroy()
+        self._refresh_folders_tags()
     def _delete_forever(self,vp):
         if messagebox.askyesno("Delete Forever",f"Permanently delete {vp.name}?"):
             if vp.exists(): vp.unlink()
             if vp.name in self.meta.data: del self.meta.data[vp.name];self.meta._save()
-            self._refresh_browse()
+            self._filter_folder()
     def _empty_trash(self):
         if messagebox.askyesno("Empty Trash","Delete ALL trash forever?"):
             for v in TRASH_DIR.glob("*.mp4"):
                 v.unlink()
                 if v.name in self.meta.data: del self.meta.data[v.name]
-            self.meta._save();self._refresh_browse()
+            self.meta._save();self._filter_folder()
     def _toggle_fav(self,vp):
         self.meta.toggle_favorite(vp.name)
         is_fav = self.meta.is_favorite(vp.name)
@@ -449,22 +562,30 @@ class FloodGate(ctk.CTk):
                 lbl.config(text="★" if is_fav else "☆", fg=STAR_GOLD if is_fav else GRAY)
         # If in favorites folder and unfavorited, refresh the folder view
         if self.browse_folder.get() == "favorites" and not is_fav:
-            self._refresh_browse()
+            self._filter_folder()
     def _view(self,vp):
         self.meta.increment_views(vp.name)
         if platform.system()=="Windows": os.startfile(str(vp))
         elif platform.system()=="Darwin": subprocess.Popen(["open",str(vp)])
         else: subprocess.Popen(["xdg-open",str(vp)])
-        self._refresh_browse()
+        self._filter_folder()
     def _tag(self,vp):
         ex=", ".join(self.meta.get_all_tags())
         tag=simpledialog.askstring("Add Tag",f"Tag for {vp.name}:\nExisting: {ex}")
-        if tag: self.meta.add_tag(vp.name,tag.strip());self._refresh_browse()
-    def _remove_tag(self,vp,tag): self.meta.remove_tag(vp.name,tag);self._refresh_browse()
+        if tag: self.meta.add_tag(vp.name,tag.strip());self._update_tags_inplace(vp)
+    def _remove_tag(self,vp,tag):
+        self.meta.remove_tag(vp.name,tag)
+        if vp.name in self._card_widgets and 'tags' in self._card_widgets[vp.name]:
+            tf = self._card_widgets[vp.name]['tags']
+            for w in tf.winfo_children(): w.destroy()
+            for t in self.meta.get_tags(vp.name)[:3]:
+                ci=hash(t)%len(TAG_COLORS)
+                TagChip(tf,t,TAG_COLORS[ci],on_remove=lambda tag,v=vp:self._remove_tag(v,tag)).pack(side="left",padx=1)
+        self._refresh_folders_tags()
     def _move(self,vp):
         folds=", ".join([f for f in self.meta.get_all_folders() if f not in["trash","favorites"]])
         f=simpledialog.askstring("Move",f"Folder for {vp.name}:\nExisting: {folds}")
-        if f: self.meta.set_folder(vp.name,f.strip());self._refresh_browse()
+        if f: self.meta.set_folder(vp.name,f.strip());self._update_folder_inplace(vp,f.strip())
     def _queue_up(self,vp):
         cap=simpledialog.askstring("Upload",f"Caption for {vp.name}:")
         if cap is None: return
@@ -658,19 +779,20 @@ class FloodGate(ctk.CTk):
         # Auto-stop if render complete
         if (BASE_DIR / "_render_complete.txt").exists():
             self._stop_live_polling()
-            self._refresh_browse()
+            self._filter_folder()
             return
         if hasattr(self, 'bframe'):
             try:
                 current_count = len(list(OUTPUT_DIR.glob("*.mp4")))
                 if not hasattr(self, '_last_video_count') or current_count != self._last_video_count:
-                    self._refresh_browse()
+                    self._filter_folder()
                     self._last_video_count = current_count
             except: pass
             self.after(1500, self._poll_browse)
 
     def _stop_live_polling(self):
         self._live_polling = False
+        self._last_browse_state = None
         if hasattr(self, '_last_video_count'): del self._last_video_count
 
     def _run_remixer(self):
