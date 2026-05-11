@@ -95,8 +95,9 @@ class ClipMeta:
         if ch:self._save()
     def _save(self): save_json(self.path,self.data)
     def toggle_favorite(self,fn):
-        if fn not in self.data: self.data[fn]={"fav":False,"tags":[],"views":0,"folder":"all"}
-        self.data[fn]["fav"]=not self.data[fn]["fav"];self._save()
+        if fn not in self.data or "fav" not in self.data[fn]:
+            self.data[fn]={"fav":False,"tags":[],"views":0,"folder":"all"}
+        self.data[fn]["fav"]=not self.data[fn].get("fav",False);self._save()
     def is_favorite(self,fn): return self.data.get(fn,{}).get("fav",False)
     def add_tag(self,fn,tag):
         tag=tag.strip()
@@ -202,6 +203,7 @@ class FloodGate(ctk.CTk):
         (BASE_DIR/LOGO_SLOT["subfolder"]).mkdir(parents=True,exist_ok=True)
 
         self.bind("<F11>",lambda e:self.attributes("-fullscreen",not self.attributes("-fullscreen")))
+        self._live_polling = False
         self._build_ui()
         self.bind("<Control-r>",lambda e:self._run_remixer())
         self.bind("<Control-R>",lambda e:self._run_remixer())
@@ -244,6 +246,7 @@ class FloodGate(ctk.CTk):
         for n,f in self.tabs.items(): f.pack_forget()
         if name in self.tabs: self.tabs[name].pack(fill="both",expand=True)
         for n,b in self.tab_btns.items(): b.config(fg=TAB_ACTIVE if n==name else TAB_INACTIVE)
+        if name=="BROWSE": self._refresh_browse()
 
     def _build_assets(self):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["ASSETS"]=tab
@@ -631,6 +634,31 @@ class FloodGate(ctk.CTk):
         menu=self.proj_menu["menu"];menu.delete(0,"end")
         for name in self.projects.list_names(): menu.add_command(label=name,command=lambda v=name:(self.proj_var.set(v),self._on_project(v)))
 
+    def _start_live_polling(self):
+        if not self._live_polling:
+            self._live_polling = True
+            self._poll_browse()
+
+    def _poll_browse(self):
+        if not self._live_polling: return
+        # Auto-stop if render complete
+        if (BASE_DIR / "_render_complete.txt").exists():
+            self._stop_live_polling()
+            self._refresh_browse()
+            return
+        if hasattr(self, 'bframe'):
+            try:
+                current_count = len(list(OUTPUT_DIR.glob("*.mp4")))
+                if not hasattr(self, '_last_video_count') or current_count != self._last_video_count:
+                    self._refresh_browse()
+                    self._last_video_count = current_count
+            except: pass
+            self.after(1500, self._poll_browse)
+
+    def _stop_live_polling(self):
+        self._live_polling = False
+        if hasattr(self, '_last_video_count'): del self._last_video_count
+
     def _run_remixer(self):
         rp=BASE_DIR/"remixer.py"
         if not rp.exists(): messagebox.showerror("Error","remixer.py not found.");return
@@ -649,10 +677,16 @@ class FloodGate(ctk.CTk):
         with open(bp,"w",encoding="ascii") as f:
             f.write("@echo off\ntitle FLOODGATE TERMINAL\necho.\necho   ====================================\necho     FLOODGATE - RENDERING\necho   ====================================\necho.\n")
             f.write(f'"{sys.executable}" "{rp}"\n')
-            f.write("echo.\necho   ====================================\necho     COMPLETE - Close this window.\necho   ====================================\necho.\npause\n")
+            f.write("echo.\necho   ====================================\necho     COMPLETE - Close this window.\necho   ====================================\necho.\n")
+            f.write(f'echo DONE > "{BASE_DIR}\\_render_complete.txt"\n')
+            f.write("pause\n")
+        # Clear completion signal
+        done_file = BASE_DIR / "_render_complete.txt"
+        if done_file.exists(): done_file.unlink()
+        self._start_live_polling()
         subprocess.Popen(["cmd","/k",str(bp)],creationflags=subprocess.CREATE_NEW_CONSOLE)
         self._set_status(f"Remixer launched — {self.render_count_var.get()} renders.")
-    def on_close(self): self._save_proj();self.destroy()
+    def on_close(self): self._stop_live_polling();self._save_proj();self.destroy()
 
 if __name__=="__main__":
     app=FloodGate();app.protocol("WM_DELETE_WINDOW",app.on_close);app.mainloop()
