@@ -377,10 +377,10 @@ class FloodGate(ctk.CTk):
             sc="★" if is_fav else "☆";sco=STAR_GOLD if is_fav else GRAY
             sl=tk.Label(tr,text=sc,font=("Helvetica Neue",12),fg=sco,bg=CARD_BG,cursor="hand2")
             sl.pack(side="left");sl.bind("<Button-1>",lambda e,v=vid:self._toggle_fav(v))
-            db=tk.Label(tr,text="X",font=("Courier New",10,"bold"),fg=TRASH_RED,bg=CARD_BG,cursor="hand2")
+            db=tk.Label(tr,text="✖",font=("Helvetica Neue",12,"bold"),fg=TRASH_RED,bg=CARD_BG,cursor="hand2")
             db.pack(side="right")
-            if tm:db.bind("<Button-1>",lambda e,v=vid:self._delete_forever(v))
-            else:db.bind("<Button-1>",lambda e,v=vid:self._move_trash(v))
+            if tm:db.bind("<Button-1>",lambda e,v=vid:self._delete_forever_confirm(v))
+            else:db.bind("<Button-1>",lambda e,v=vid:self._move_trash_instant(v))
 
             nm=vid.stem[:25]+("..." if len(vid.stem)>25 else "")
             tk.Label(card,text=nm,font=("Courier New",8,"bold"),fg=WHITE,bg=CARD_BG,wraplength=180).pack(pady=(4,1))
@@ -406,11 +406,17 @@ class FloodGate(ctk.CTk):
                 HoverButton(br2,text="DELETE",font=("Courier New",7,"bold"),fg=WHITE,bg=TRASH_RED,bd=0,padx=8,pady=2,command=lambda p=vid:self._delete_forever(p)).pack(side="left",padx=2)
         self._refresh_folders_tags()
 
+    def _move_trash_instant(self, vp):
+        TRASH_DIR.mkdir(parents=True,exist_ok=True);d=TRASH_DIR/vp.name
+        if vp.exists(): shutil.move(str(vp),str(d))
+        self.meta.set_folder(vp.name,"trash");self._refresh_browse()
+
+    def _delete_forever_confirm(self, vp):
+        if messagebox.askyesno("Delete Forever",f"Permanently delete {vp.name}?\nThis cannot be undone."):
+            self._delete_forever(vp)
+
     def _move_trash(self,vp):
-        if messagebox.askyesno("Trash",f"Move {vp.name} to trash?"):
-            TRASH_DIR.mkdir(parents=True,exist_ok=True);d=TRASH_DIR/vp.name
-            if vp.exists(): shutil.move(str(vp),str(d))
-            self.meta.set_folder(vp.name,"trash");self._refresh_browse()
+        self._move_trash_instant(vp)
     def _restore(self,vp):
         d=OUTPUT_DIR/vp.name
         if vp.exists(): shutil.move(str(vp),str(d))
