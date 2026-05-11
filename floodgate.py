@@ -386,7 +386,7 @@ class FloodGate(ctk.CTk):
             tk.Label(card,text=nm,font=("Courier New",8,"bold"),fg=WHITE,bg=CARD_BG,wraplength=180).pack(pady=(4,1))
             dt=datetime.fromtimestamp(vid.stat().st_mtime).strftime("%m/%d/%y %H:%M")
             tk.Label(card,text=dt,font=("Courier New",7),fg=GRAY,bg=CARD_BG).pack()
-            tk.Label(card,text=f"{human_size(vid.stat().st_size)}  •  {views}v",font=("Courier New",7),fg=GRAY,bg=CARD_BG).pack()
+            tk.Label(card,text=f"{human_size(vid.stat().st_size)}  •  {views} views",font=("Courier New",7),fg=GRAY,bg=CARD_BG).pack()
 
             if fn and fn!="all" and not tm:tk.Label(card,text=f"[{fn}]",font=("Courier New",7),fg=ACCENT,bg=CARD_BG).pack()
             if tl and not tm:
