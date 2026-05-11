@@ -204,6 +204,7 @@ class FloodGate(ctk.CTk):
 
         self.bind("<F11>",lambda e:self.attributes("-fullscreen",not self.attributes("-fullscreen")))
         self._live_polling = False
+        self._star_labels = {}
         self._build_ui()
         self.bind("<Control-r>",lambda e:self._run_remixer())
         self.bind("<Control-R>",lambda e:self._run_remixer())
@@ -246,7 +247,7 @@ class FloodGate(ctk.CTk):
         for n,f in self.tabs.items(): f.pack_forget()
         if name in self.tabs: self.tabs[name].pack(fill="both",expand=True)
         for n,b in self.tab_btns.items(): b.config(fg=TAB_ACTIVE if n==name else TAB_INACTIVE)
-        if name=="BROWSE": self._refresh_browse()
+        if name=="BROWSE" and not self._live_polling: self._refresh_browse()
 
     def _build_assets(self):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["ASSETS"]=tab
@@ -345,6 +346,7 @@ class FloodGate(ctk.CTk):
         if n and n.lower()!="trash": self.browse_folder.set(n);self._refresh_folders_tags();self._refresh_browse()
 
     def _refresh_browse(self):
+        self._star_labels.clear()
         for w in self.bframe.winfo_children(): w.destroy()
         folder=self.browse_folder.get();tag=self.browse_tag.get()
         if folder=="trash": videos=list(TRASH_DIR.glob("*.mp4"));tm=True
@@ -380,6 +382,7 @@ class FloodGate(ctk.CTk):
             sc="★" if is_fav else "☆";sco=STAR_GOLD if is_fav else GRAY
             sl=tk.Label(tr,text=sc,font=("Helvetica Neue",12),fg=sco,bg=CARD_BG,cursor="hand2")
             sl.pack(side="left");sl.bind("<Button-1>",lambda e,v=vid:self._toggle_fav(v))
+            self._star_labels[vid.name] = sl
             db=tk.Label(tr,text="✖",font=("Helvetica Neue",12,"bold"),fg=TRASH_RED,bg=CARD_BG,cursor="hand2")
             db.pack(side="right")
             if tm:db.bind("<Button-1>",lambda e,v=vid:self._delete_forever_confirm(v))
@@ -435,7 +438,14 @@ class FloodGate(ctk.CTk):
                 v.unlink()
                 if v.name in self.meta.data: del self.meta.data[v.name]
             self.meta._save();self._refresh_browse()
-    def _toggle_fav(self,vp): self.meta.toggle_favorite(vp.name);self._refresh_browse()
+    def _toggle_fav(self,vp):
+        self.meta.toggle_favorite(vp.name)
+        # Update just the star in-place without rebuilding
+        if vp.name in self._star_labels:
+            lbl = self._star_labels[vp.name]
+            if lbl.winfo_exists():
+                is_fav = self.meta.is_favorite(vp.name)
+                lbl.config(text="★" if is_fav else "☆", fg=STAR_GOLD if is_fav else GRAY)
     def _view(self,vp):
         self.meta.increment_views(vp.name)
         if platform.system()=="Windows": os.startfile(str(vp))
