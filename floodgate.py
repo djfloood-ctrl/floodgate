@@ -38,6 +38,7 @@ FORMAT_PRESETS = {
     "Square Post (1:1)":     {"w":1080,"h":1080,"fps":30},
     "Widescreen (16:9)":     {"w":1920,"h":1080,"fps":30},
     "Cinematic (21:9)":      {"w":2560,"h":1080,"fps":24},
+    "Custom":                 {"w":1080,"h":1920,"fps":30},
 }
 
 CLIP_LENGTHS = {"15s":15,"30s":30,"60s":60,"90s":90,"3min":180,"5min":300}
@@ -147,7 +148,7 @@ class ProjectManager:
         if "Default" not in self.projects: self._mkdefault()
         self.current="Default"
     def _mkdefault(self):
-        save_json(PROJECTS_DIR/"Default"/"project.json",{"name":"Default","assets":{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":""},"captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"caption_font":"Impact","num_renders":10,"format":"Reel / TikTok (9:16)","clip_length":30}})
+        save_json(PROJECTS_DIR/"Default"/"project.json",{"name":"Default","assets":{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":""},"captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"caption_font":"Impact","num_renders":10,"format":"Widescreen (16:9)","clip_length":30}})
         self.projects["Default"]=load_json(PROJECTS_DIR/"Default"/"project.json")
     def _load(self):
         p={}
@@ -156,7 +157,7 @@ class ProjectManager:
         return p
     def create(self,name):
         if name in self.projects: return False
-        data={"name":name,"assets":{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":""},"captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"caption_font":"Impact","num_renders":10,"format":"Reel / TikTok (9:16)","clip_length":30}}
+        data={"name":name,"assets":{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":""},"captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"caption_font":"Impact","num_renders":10,"format":"Widescreen (16:9)","clip_length":30}}
         save_json(PROJECTS_DIR/name/"project.json",data);self.projects[name]=data;return True
     def list_names(self): return sorted(self.projects.keys())
     def get(self,name): return self.projects.get(name)
@@ -194,7 +195,7 @@ class FloodGate(ctk.CTk):
         self.browse_folder=tk.StringVar(value="all")
         self.browse_search=tk.StringVar(value="")
         self.browse_search.trace_add("write", lambda *a: self._filter_search())
-        self.fmt_var=tk.StringVar(value=self.config.get("settings",{}).get("format","Reel / TikTok (9:16)"))
+        self.fmt_var=tk.StringVar(value=self.config.get("settings",{}).get("format","Widescreen (16:9)"))
         self.len_var=tk.IntVar(value=self.config.get("settings",{}).get("clip_length",30))
 
         OUTPUT_DIR.mkdir(parents=True,exist_ok=True)
@@ -203,8 +204,7 @@ class FloodGate(ctk.CTk):
         (BASE_DIR/LOGO_SLOT["subfolder"]).mkdir(parents=True,exist_ok=True)
 
         self.bind("<F11>",lambda e:self.attributes("-fullscreen",not self.attributes("-fullscreen")))
-        self.bind_all("<MouseWheel>", self._global_scroll)
-
+        self.bind_all("<MouseWheel>",self._global_scroll)
         self._live_polling = False
         self._last_browse_state = None
         self._star_labels = {}
@@ -216,47 +216,44 @@ class FloodGate(ctk.CTk):
         self._refresh_project_menu()
 
     def _load_config(self):
-        c=load_json(CONFIG_PATH,{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":"","num_renders":10,"caption_font":"Impact","captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"format":"Reel / TikTok (9:16)","clip_length":30}})
+        c=load_json(CONFIG_PATH,{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":"","num_renders":10,"caption_font":"Impact","captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"format":"Widescreen (16:9)","clip_length":30}})
         if "caption_font" not in c: c["caption_font"]="Impact"
         return c
     def _save_config(self): save_json(CONFIG_PATH,self.config)
     def _set_status(self,msg): self.after(0,lambda:self.status_var.set(msg))
 
     def _global_scroll(self, event):
-        # Momentum scroll: tracks speed between events for fluid acceleration
-        now = event.time
-        delta = event.delta
-        
-        # Calculate scroll velocity (higher = user is scrolling faster)
-        if not hasattr(self, '_last_scroll_time'):
-            self._last_scroll_time = now
-            self._scroll_momentum = 0
-        
-        time_diff = max(now - self._last_scroll_time, 1)
-        self._last_scroll_time = now
-        
-        # Base speed: 2x faster than before
-        base = abs(delta) / 15
-        
-        # Build momentum on consecutive fast scrolls
-        if time_diff < 80:
-            self._scroll_momentum = min(self._scroll_momentum + 0.5, 4.0)
-        else:
-            self._scroll_momentum = max(self._scroll_momentum - 0.3, 1.0)
-        
-        speed = base * self._scroll_momentum
-        direction = -1 if delta > 0 else 1
-        amount = int(direction * speed)
-        
-        if isinstance(event.widget, tk.Listbox):
-            event.widget.yview_scroll(amount, "units")
-            return "break"
-        if hasattr(self, 'bcv') and self.bcv.winfo_ismapped():
-            self.bcv._parent_canvas.yview_scroll(amount, "units")
-        elif hasattr(self, 'tabs') and 'ASSETS' in self.tabs:
-            sf = self.tabs['ASSETS'].winfo_children()[0]
-            if hasattr(sf, '_parent_canvas'):
-                sf._parent_canvas.yview_scroll(amount, "units")
+        widget = self.focus_get()
+        if widget:
+            # Walk up to find a CTkScrollableFrame
+            parent = widget
+            while parent:
+                if hasattr(parent, '_parent_canvas'):
+                    parent._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                    return
+                parent = parent.master if hasattr(parent, 'master') else None
+
+    def _on_format_change(self, choice):
+        if choice == "Custom":
+            self._open_custom_dialog()
+            return
+        self.fmt_var.set(choice)
+        self.config["settings"]["format"] = choice
+        self._save_config()
+
+    def _open_custom_dialog(self):
+        w = simpledialog.askinteger("Custom Format", "Width (px):", initialvalue=1080, minvalue=100, maxvalue=7680)
+        if w is None: self.fmt_var.set("Widescreen (16:9)"); return
+        h = simpledialog.askinteger("Custom Format", "Height (px):", initialvalue=1920, minvalue=100, maxvalue=7680)
+        if h is None: self.fmt_var.set("Widescreen (16:9)"); return
+        fps = simpledialog.askinteger("Custom Format", "FPS:", initialvalue=30, minvalue=1, maxvalue=120)
+        if fps is None: self.fmt_var.set("Widescreen (16:9)"); return
+        self.config["settings"]["target_w"] = w
+        self.config["settings"]["target_h"] = h
+        self.config["settings"]["target_fps"] = fps
+        self.config["settings"]["format"] = "Custom"
+        self.fmt_var.set("Custom")
+        self._save_config()
 
     def _build_ui(self):
         tb=tk.Frame(self,bg=DARK_RED,height=40);tb.pack(fill="x");tb.pack_propagate(False)
@@ -295,10 +292,9 @@ class FloodGate(ctk.CTk):
         sf=ctk.CTkScrollableFrame(tab,fg_color=BG_RED)
         sf.pack(side="left",fill="both",expand=True)
 
-
         fb=tk.Frame(sf,bg=DARK_RED,height=34);fb.pack(fill="x",padx=14,pady=(6,4));fb.pack_propagate(False)
         tk.Label(fb,text="FORMAT:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(10,4))
-        fm=tk.OptionMenu(fb,self.fmt_var,*FORMAT_PRESETS.keys(),command=lambda c:[self.fmt_var.set(c),self._save_config()])
+        fm=tk.OptionMenu(fb,self.fmt_var,*FORMAT_PRESETS.keys(),command=self._on_format_change)
         fm.config(font=("Courier New",8),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
         fm["menu"].config(font=("Courier New",8),bg=CARD_BG,fg=WHITE,bd=0);fm.pack(side="left",padx=2)
         tk.Label(fb,text="LENGTH:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(14,4))
@@ -346,7 +342,6 @@ class FloodGate(ctk.CTk):
         self.bcv=ctk.CTkScrollableFrame(ma,fg_color=BG_RED)
         self.bcv.pack(side="left",fill="both",expand=True)
         self.bframe=self.bcv
-
         self._refresh_browse()  # initial load
 
     def _filter_search(self):
@@ -782,7 +777,7 @@ class FloodGate(ctk.CTk):
             self.config["settings"].update(proj.get("settings",{}))
             self.config["num_renders"]=proj.get("settings",{}).get("num_renders",10)
             self.config["caption_font"]=proj.get("settings",{}).get("caption_font","Impact")
-            self.fmt_var.set(proj.get("settings",{}).get("format","Reel / TikTok (9:16)"))
+            self.fmt_var.set(proj.get("settings",{}).get("format","Widescreen (16:9)"))
             self.len_var.set(proj.get("settings",{}).get("clip_length",30))
             self.projects.current=choice;self._refresh_all();self._set_status(f"Loaded: {choice}")
     def _save_proj(self):
@@ -836,7 +831,10 @@ class FloodGate(ctk.CTk):
         self.config["captions"]["act_b"]=self.cap_b_var.get()
         self.config["settings"]["preview_mode"]=self.preview_var.get()
         fmt=self.fmt_var.get()
-        if fmt in FORMAT_PRESETS:
+        if fmt == "Custom":
+            # Custom values already saved in config by the dialog
+            pass
+        elif fmt in FORMAT_PRESETS:
             p=FORMAT_PRESETS[fmt];self.config["settings"]["target_w"]=p["w"];self.config["settings"]["target_h"]=p["h"];self.config["settings"]["target_fps"]=p["fps"]
         self.config["settings"]["format"]=fmt;self.config["settings"]["clip_length"]=self.len_var.get()
         self._save_config()
