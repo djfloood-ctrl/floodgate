@@ -204,7 +204,8 @@ class FloodGate(ctk.CTk):
         (BASE_DIR/LOGO_SLOT["subfolder"]).mkdir(parents=True,exist_ok=True)
 
         self.bind("<F11>",lambda e:self.attributes("-fullscreen",not self.attributes("-fullscreen")))
-        self.bind_all("<MouseWheel>",self._global_scroll)
+        self.bind_all("<MouseWheel>", self._global_scroll)
+
         self._live_polling = False
         self._last_browse_state = None
         self._star_labels = {}
@@ -223,15 +224,40 @@ class FloodGate(ctk.CTk):
     def _set_status(self,msg): self.after(0,lambda:self.status_var.set(msg))
 
     def _global_scroll(self, event):
-        widget = self.focus_get()
-        if widget:
-            # Walk up to find a CTkScrollableFrame
-            parent = widget
-            while parent:
-                if hasattr(parent, '_parent_canvas'):
-                    parent._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-                    return
-                parent = parent.master if hasattr(parent, 'master') else None
+        # Momentum scroll: tracks speed between events for fluid acceleration
+        now = event.time
+        delta = event.delta
+        
+        # Calculate scroll velocity (higher = user is scrolling faster)
+        if not hasattr(self, '_last_scroll_time'):
+            self._last_scroll_time = now
+            self._scroll_momentum = 0
+        
+        time_diff = max(now - self._last_scroll_time, 1)
+        self._last_scroll_time = now
+        
+        # Base speed: 2x faster than before
+        base = abs(delta) / 15
+        
+        # Build momentum on consecutive fast scrolls
+        if time_diff < 80:
+            self._scroll_momentum = min(self._scroll_momentum + 0.5, 4.0)
+        else:
+            self._scroll_momentum = max(self._scroll_momentum - 0.3, 1.0)
+        
+        speed = base * self._scroll_momentum
+        direction = -1 if delta > 0 else 1
+        amount = int(direction * speed)
+        
+        if isinstance(event.widget, tk.Listbox):
+            event.widget.yview_scroll(amount, "units")
+            return "break"
+        if hasattr(self, 'bcv') and self.bcv.winfo_ismapped():
+            self.bcv._parent_canvas.yview_scroll(amount, "units")
+        elif hasattr(self, 'tabs') and 'ASSETS' in self.tabs:
+            sf = self.tabs['ASSETS'].winfo_children()[0]
+            if hasattr(sf, '_parent_canvas'):
+                sf._parent_canvas.yview_scroll(amount, "units")
 
     def _build_ui(self):
         tb=tk.Frame(self,bg=DARK_RED,height=40);tb.pack(fill="x");tb.pack_propagate(False)
@@ -269,6 +295,7 @@ class FloodGate(ctk.CTk):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["ASSETS"]=tab
         sf=ctk.CTkScrollableFrame(tab,fg_color=BG_RED)
         sf.pack(side="left",fill="both",expand=True)
+
 
         fb=tk.Frame(sf,bg=DARK_RED,height=34);fb.pack(fill="x",padx=14,pady=(6,4));fb.pack_propagate(False)
         tk.Label(fb,text="FORMAT:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(10,4))
@@ -320,6 +347,7 @@ class FloodGate(ctk.CTk):
         self.bcv=ctk.CTkScrollableFrame(ma,fg_color=BG_RED)
         self.bcv.pack(side="left",fill="both",expand=True)
         self.bframe=self.bcv
+
         self._refresh_browse()  # initial load
 
     def _filter_search(self):
