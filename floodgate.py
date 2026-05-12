@@ -44,13 +44,13 @@ FORMAT_PRESETS = {
 CLIP_LENGTHS = {"15s":15,"30s":30,"60s":60,"90s":90,"3min":180,"5min":300}
 
 SLOTS = {
-    "act_a_videos": {"label":"Act A — Sad / Bleak Clips","subfolder":"assets/act_a","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"Without DJ FLOOD","side":"left"},
-    "act_b_videos": {"label":"Act B — Heat / Energy Clips","subfolder":"assets/act_b","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"With DJ FLOOD","side":"right"},
-    "act_a_music": {"label":"Act A — Sad Music","subfolder":"assets/music/sad","types":[("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"Ambience","side":"left"},
-    "act_b_music": {"label":"Act B — Bangers","subfolder":"assets/music/heat","types":[("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"DJ sets","side":"right"},
-    "voiceover_clips": {"label":"Voiceover — AI Clips","subfolder":"assets/voiceovers","types":[("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"elevenlabs.io","side":"center"},
+    "act_a_videos": {"label":"Act A — Sad / Bleak Clips","subfolder":"assets/act_a","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"Sad, bleak, melancholic, rainy day footage","side":"left"},
+    "act_b_videos": {"label":"Act B — Heat / Energy Clips","subfolder":"assets/act_b","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"Hype, energy, heat, crowds, lights, action","side":"right"},
+    "act_a_music": {"label":"Act A — Sad Music","subfolder":"assets/music/sad","types":[("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"Sad instrumentals, ambient sounds, quiet tracks","side":"left"},
+    "act_b_music": {"label":"Act B — Bangers","subfolder":"assets/music/heat","types":[("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"Your tracks, beats, remixes, produced music","side":"right"},
+    "voiceover_clips": {"label":"Voiceover — AI Clips","subfolder":"assets/voiceovers","types":[("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"AI-generated voice clips for your videos","side":"center"},
 }
-LOGO_SLOT = {"label":"Logo — Final Frame","subfolder":"assets/logo","types":[("Image","*.png *.jpg *.jpeg")],"hint":"PNG","side":"center"}
+LOGO_SLOT = {"label":"Logo — Final Frame","subfolder":"assets/logo","types":[("Image","*.png *.jpg *.jpeg")],"hint":"Your brand logo with transparent background","side":"center"}
 
 def load_json(p, d=None):
     if Path(p).exists():
@@ -624,8 +624,8 @@ class FloodGate(ctk.CTk):
     def _slot(self,parent,key,meta):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
         card.pack(fill="x",pady=(0,6),ipady=2)
-        tk.Label(card,text=meta["label"],font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
-        tk.Label(card,text=meta["hint"],font=("Courier New",6),fg=GRAY,bg=CARD_BG).pack(pady=(0,4))
+        tk.Label(card,text=meta["label"],font=("Helvetica Neue",9,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
+        tk.Label(card,text=meta["hint"],font=("Courier New",7),fg="#E8DDD4",bg=CARD_BG).pack(pady=(0,4))
         lb=tk.Listbox(card,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=("Courier New",8),height=3,bd=0,highlightthickness=0,activestyle="none")
         lb.pack(fill="x",padx=12,pady=(0,4));self.listboxes[key]=lb
         lb.bind("<Delete>",lambda e,k=key:self._remove_selected(k))
