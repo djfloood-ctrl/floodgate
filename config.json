@@ -63,7 +63,7 @@
   ],
   "logo": "assets/logo/TRANSPARENT LOGO.png",
   "outro_duration": 1.5,
-  "num_renders": 5,
+  "num_renders": 1,
   "captions": {
     "act_a": "When I'm not listening to DJ FLOOD",
     "act_b": "When I'm listening to DJ FLOOD"
@@ -73,16 +73,16 @@
     "preview_resolution": "1920x1080",
     "music_volume": 0.35,
     "output_dir": "output",
-    "num_renders": 5,
-    "caption_font": "Futura",
-    "format": "Widescreen (16:9)",
+    "num_renders": 1,
+    "caption_font": "Consolas",
+    "format": "Reel / TikTok (9:16)",
     "clip_length": 30,
     "template": "SAD CLIP / HAPPY CLIP",
     "longform_mode": "Movies",
-    "target_w": 1920,
-    "target_h": 1080,
-    "target_fps": 30
+    "target_w": 100,
+    "target_h": 100,
+    "target_fps": 24
   },
-  "caption_font": "Futura",
+  "caption_font": "Consolas",
   "longform_source": []
 }
