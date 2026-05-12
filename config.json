@@ -63,7 +63,7 @@
   ],
   "logo": "assets/logo/TRANSPARENT LOGO.png",
   "outro_duration": 1.5,
-  "num_renders": 1,
+  "num_renders": 5,
   "captions": {
     "act_a": "When I'm not listening to DJ FLOOD",
     "act_b": "When I'm listening to DJ FLOOD"
@@ -73,8 +73,8 @@
     "preview_resolution": "1920x1080",
     "music_volume": 0.35,
     "output_dir": "output",
-    "num_renders": 1,
-    "caption_font": "CASTELAR",
+    "num_renders": 5,
+    "caption_font": "Futura",
     "format": "Widescreen (16:9)",
     "clip_length": 30,
     "template": "SAD CLIP / HAPPY CLIP",
@@ -83,6 +83,6 @@
     "target_h": 1080,
     "target_fps": 30
   },
-  "caption_font": "CASTELAR",
+  "caption_font": "Futura",
   "longform_source": []
 }

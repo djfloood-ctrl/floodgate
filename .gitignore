@@ -1,0 +1,17 @@
+*.bat 
+*.exe 
+fix_*.py 
+build/ 
+dist/ 
+output/ 
+assets/ 
+*.txt 
+.env 
+*.ico 
+Documentation/ 
+templates/ 
+projects/ 
+"{first_line[" 
+clip_meta.json 
+patch_instructions.json 
+asset_manager.py 
