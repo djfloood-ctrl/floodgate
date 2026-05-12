@@ -255,15 +255,8 @@ class FloodGate(ctk.CTk):
 
     def _build_assets(self):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["ASSETS"]=tab
-        cv=tk.Canvas(tab,bg=BG_RED,highlightthickness=0)
-        sb=tk.Scrollbar(tab,orient="vertical",command=cv.yview)
-        sf=tk.Frame(cv,bg=BG_RED)
-        sf.bind("<Configure>",lambda e:cv.configure(scrollregion=cv.bbox("all")))
-        cv.create_window((0,0),window=sf,anchor="nw",tags="sf")
-        cv.bind("<Configure>",lambda e:cv.itemconfig("sf",width=e.width))
-        cv.configure(yscrollcommand=sb.set);cv.pack(side="left",fill="both",expand=True)
-        sb.pack(side="right",fill="y")
-        cv.bind_all("<MouseWheel>",lambda e:cv.yview_scroll(int(-1*(e.delta/120)),"units"))
+        sf=ctk.CTkScrollableFrame(tab,fg_color=BG_RED)
+        sf.pack(side="left",fill="both",expand=True)
 
         fb=tk.Frame(sf,bg=DARK_RED,height=34);fb.pack(fill="x",padx=14,pady=(8,4));fb.pack_propagate(False)
         tk.Label(fb,text="FORMAT:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(10,4))
@@ -295,12 +288,12 @@ class FloodGate(ctk.CTk):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["BROWSE"]=tab
         sidebar=tk.Frame(tab,bg=DARK_RED,width=160);sidebar.pack(side="left",fill="y");sidebar.pack_propagate(False)
         tk.Label(sidebar,text="FOLDERS",font=("Helvetica Neue",9,"bold"),fg=WHITE,bg=DARK_RED).pack(pady=(10,4),padx=10)
-        self.flb=tk.Listbox(sidebar,bg=DARK_RED,fg=WHITE,selectbackground=ACCENT,selectforeground=WHITE,font=("Courier New",8),bd=0,height=6)
-        self.flb.pack(fill="x",padx=6,pady=(0,4));self.flb.bind("<<ListboxSelect>>",self._on_folder)
+        self.flb=tk.Listbox(sidebar,bg=DARK_RED,fg=WHITE,selectbackground=ACCENT,selectforeground=WHITE,font=("Courier New",8),bd=0,height=8)
+        self.flb.pack(fill="both",padx=6,pady=(0,4),expand=True);self.flb.bind("<<ListboxSelect>>",self._on_folder)
         tk.Button(sidebar,text="+ FOLDER",font=("Courier New",7,"bold"),fg=BLACK,bg=WHITE,activebackground=GRAY,bd=0,padx=8,pady=2,cursor="hand2",command=self._new_folder).pack(padx=6,pady=2)
         tk.Label(sidebar,text="TAGS",font=("Helvetica Neue",9,"bold"),fg=WHITE,bg=DARK_RED).pack(pady=(12,4),padx=10)
-        self.tlb=tk.Listbox(sidebar,bg=DARK_RED,fg=WHITE,selectbackground=ACCENT,selectforeground=WHITE,font=("Courier New",8),bd=0,height=5)
-        self.tlb.pack(fill="x",padx=6,pady=(0,4));self.tlb.bind("<<ListboxSelect>>",self._on_tag)
+        self.tlb=tk.Listbox(sidebar,bg=DARK_RED,fg=WHITE,selectbackground=ACCENT,selectforeground=WHITE,font=("Courier New",8),bd=0,height=6)
+        self.tlb.pack(fill="both",padx=6,pady=(0,4),expand=True);self.tlb.bind("<<ListboxSelect>>",self._on_tag)
 
         ma=tk.Frame(tab,bg=BG_RED);ma.pack(side="left",fill="both",expand=True)
         ctr=tk.Frame(ma,bg=BG_RED);ctr.pack(fill="x",padx=12,pady=(8,4))
@@ -603,8 +596,10 @@ class FloodGate(ctk.CTk):
         HoverButton(st,text="PAIR IG",font=("Courier New",7,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=8,pady=1,command=lambda:[setattr(self.upload,'paired_ig',True),self.ig_lbl.config(text="IG: PAIRED",fg=UPLOAD_GREEN),messagebox.showinfo("Instagram","Paired!")]).pack(side="left",padx=2)
         self.tt_lbl=tk.Label(st,text="TT: NOT PAIRED",font=("Courier New",7,"bold"),fg=GRAY,bg=BG_RED);self.tt_lbl.pack(side="left",padx=(14,0))
         HoverButton(st,text="PAIR TT",font=("Courier New",7,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=8,pady=1,command=lambda:[setattr(self.upload,'paired_tt',True),self.tt_lbl.config(text="TT: PAIRED",fg=UPLOAD_GREEN),messagebox.showinfo("TikTok","Paired!")]).pack(side="left",padx=2)
-        self.ulb=tk.Listbox(tab,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=("Courier New",8),bd=0)
-        self.ulb.pack(fill="both",expand=True,padx=20,pady=(6,6))
+        self.ulb_frame=ctk.CTkScrollableFrame(tab,fg_color=DARK_RED)
+        self.ulb_frame.pack(fill="both",expand=True,padx=20,pady=(6,6))
+        self.ulb=tk.Listbox(self.ulb_frame,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=("Courier New",8),bd=0,height=20)
+        self.ulb.pack(fill="both",expand=True)
         br=tk.Frame(tab,bg=BG_RED);br.pack(fill="x",padx=20,pady=(0,14))
         HoverButton(br,text="REMOVE",font=("Courier New",8,"bold"),fg=BLACK,bg=ACCENT,bd=0,padx=10,pady=4,command=self._remove_draft).pack(side="left")
         HoverButton(br,text="UPLOAD ALL",font=("Courier New",8,"bold"),fg=BLACK,bg=UPLOAD_GREEN,bd=0,padx=10,pady=4,command=self._upload_all).pack(side="right")
