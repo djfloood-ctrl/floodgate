@@ -281,7 +281,7 @@ class FloodGate(ctk.CTk):
         lm["menu"].config(font=("Courier New",8),bg=CARD_BG,fg=WHITE,bd=0);lm.pack(side="left",padx=2)
 
         af=tk.Frame(sf,bg=BG_RED);af.pack(fill="x",padx=14,pady=(4,0))
-        af.columnconfigure(0,weight=618);af.columnconfigure(1,weight=382)
+        af.columnconfigure(0,weight=1);af.columnconfigure(1,weight=1)
         lc=tk.Frame(af,bg=BG_RED);lc.grid(row=0,column=0,sticky="nsew",padx=(0,3))
         rc=tk.Frame(af,bg=BG_RED);rc.grid(row=0,column=1,sticky="nsew",padx=(3,0))
         for key in ["act_a_videos","act_a_music","act_b_videos","act_b_music"]:
@@ -735,8 +735,12 @@ class FloodGate(ctk.CTk):
         if not lb: return
         lb.delete(0,"end")
         for path in self.config.get(key,[]):
-            full=Path(path);sz=f"  [{human_size(full.stat().st_size)}]" if full.exists() else ""
-            lb.insert("end",f"  {full.name}{sz}")
+            full=Path(path)
+            sz=f"[{human_size(full.stat().st_size)}]"
+            name=full.name
+            if len(name)>38: name=name[:18]+"..."+name[-15:]
+            entry=f" {sz:>10}  {name}"
+            lb.insert("end",entry)
     def _refresh_all(self):
         for key in self.listboxes: self._refresh_listbox(key)
         self.logo_var.set(self.config.get("logo",""));self._refresh_project_menu()
