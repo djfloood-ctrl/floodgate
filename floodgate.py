@@ -48,6 +48,11 @@ FORMAT_PRESETS = {
 "Custom":{"w":1080,"h":1920,"fps":30},
 }
 
+TEMPLATES = {
+    "SAD CLIP / HAPPY CLIP": ["act_a_videos","act_b_videos","act_a_music","act_b_music","voiceover_clips"],
+    "LONGFORM CLIPS": ["longform_source","voiceover_clips"],
+}
+
 CLIP_LENGTHS = {"15s":15,"30s":30,"60s":60,"90s":90,"3min":180,"5min":300}
 
 SLOTS = {
@@ -55,6 +60,7 @@ SLOTS = {
     "act_b_videos": {"label":"Act B — Heat / Energy Clips","subfolder":"assets/act_b","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"Hype, energy, heat, crowds, lights, action","side":"right"},
     "act_a_music": {"label":"Act A — Sad Music","subfolder":"assets/music/sad","types":[("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"Sad instrumentals, ambient sounds, quiet tracks","side":"left"},
     "act_b_music": {"label":"Act B — Bangers","subfolder":"assets/music/heat","types":[("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"Your tracks, beats, remixes, produced music","side":"right"},
+    "longform_source": {"label":"Longform Source","subfolder":"assets/longform","types":[("Video","*.mp4 *.mov *.avi *.mkv"),("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"Movies, podcasts, TV, comedy","side":"center"},
     "voiceover_clips": {"label":"Voiceover — AI Clips","subfolder":"assets/voiceovers","types":[("Audio","*.mp3 *.wav *.aac *.m4a")],"hint":"AI-generated voice clips for your videos","side":"center"},
 }
 LOGO_SLOT = {"label":"Logo — Final Frame","subfolder":"assets/logo","types":[("Image","*.png *.jpg *.jpeg")],"hint":"Your brand logo with transparent background","side":"center"}
@@ -402,6 +408,29 @@ class FloodGate(ctk.CTk):
         dialog.protocol("WM_DELETE_WINDOW", cancel)
         dialog.wait_window()
 
+    def _on_template_change(self, choice):
+        self.template_var.set(choice)
+        self._show_template(choice)
+        self.config["settings"]["template"] = choice
+        self._save_config()
+
+    def _show_template(self, template_name):
+        for key, meta in SLOTS.items():
+            if key not in self.listboxes:
+                continue
+            lb = self.listboxes[key]
+            card = lb.master
+            if key == "longform_source" or meta.get("subfolder") == "assets/longform":
+                if template_name == "LONGFORM CLIPS":
+                    card.pack(fill="x", pady=(0,6), ipady=4)
+                else:
+                    card.pack_forget()
+            elif key in ["act_a_videos","act_b_videos","act_a_music","act_b_music"]:
+                if template_name == "SAD CLIP / HAPPY CLIP":
+                    card.pack(fill="x", pady=(0,6), ipady=4)
+                else:
+                    card.pack_forget()
+
     def _build_ui(self):
         tb=tk.Frame(self,bg=DARK_RED,height=40);tb.pack(fill="x");tb.pack_propagate(False)
         try:
@@ -441,6 +470,13 @@ class FloodGate(ctk.CTk):
 
 
         fb=tk.Frame(sf,bg=DARK_RED,height=34);fb.pack(fill="x",padx=14,pady=(6,4));fb.pack_propagate(False)
+
+        tk.Label(fb,text="TEMPLATE:",font=("Courier New",8,"bold"),fg=ACCENT,bg=DARK_RED).pack(side="left",padx=(10,4))
+        self.template_var = tk.StringVar(value="SAD CLIP / HAPPY CLIP")
+        tm = tk.OptionMenu(fb, self.template_var, *TEMPLATES.keys(), command=self._on_template_change)
+        tm.config(font=("Courier New",8), bg=DARK_RED, fg=WHITE, activebackground=CARD_BG, bd=0, highlightthickness=0)
+        tm["menu"].config(font=("Courier New",8), bg=CARD_BG, fg=WHITE, bd=0)
+        tm.pack(side="left", padx=2)
         tk.Label(fb,text="FORMAT:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(10,4))
         fm=tk.OptionMenu(fb,self.fmt_var,*FORMAT_PRESETS.keys(),command=self._on_format_change)
         fm.config(font=("Courier New",8),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
@@ -898,7 +934,7 @@ class FloodGate(ctk.CTk):
         self.config["captions"]["act_a"]=self.cap_a_var.get()
         self.config["captions"]["act_b"]=self.cap_b_var.get()
         self.config["caption_font"]=self.cap_font_var.get()
-        self.config["settings"]["format"]=self.fmt_var.get()
+        self.config["settings"]["format"]=self.fmt_var.get();self.config["settings"]["template"]=self.template_var.get()
         self.config["settings"]["clip_length"]=self.len_var.get()
         self._save_config();self._set_status("Settings saved.")
     def _refresh_listbox(self,key):
@@ -927,13 +963,14 @@ class FloodGate(ctk.CTk):
             self.config["num_renders"]=proj.get("settings",{}).get("num_renders",10)
             self.config["caption_font"]=proj.get("settings",{}).get("caption_font","Impact")
             self.fmt_var.set(proj.get("settings",{}).get("format","Reel / TikTok (9:16)"))
+            self.template_var.set(proj.get("settings",{}).get("template","SAD CLIP / HAPPY CLIP"))
             self.len_var.set(proj.get("settings",{}).get("clip_length",30))
             self.projects.current=choice;self._refresh_all();self._set_status(f"Loaded: {choice}")
     def _save_proj(self):
         if self.projects.current:
             data={"name":self.projects.current,"assets":{"act_a_videos":self.config.get("act_a_videos",[]),"act_b_videos":self.config.get("act_b_videos",[]),"act_a_music":self.config.get("act_a_music",[]),"act_b_music":self.config.get("act_b_music",[]),"voiceover_clips":self.config.get("voiceover_clips",[]),"logo":self.config.get("logo","")},"captions":self.config.get("captions",{}),"settings":self.config.get("settings",{})}
             data["settings"]["num_renders"]=self.config.get("num_renders",10);data["settings"]["caption_font"]=self.config.get("caption_font","Impact")
-            data["settings"]["format"]=self.fmt_var.get();data["settings"]["clip_length"]=self.len_var.get()
+            data["settings"]["format"]=self.fmt_var.get();data["settings"]["clip_length"]=self.len_var.get();data["settings"]["template"]=self.template_var.get()
             self.projects.save(self.projects.current,data)
     def _new_project(self):
         self._save_proj();name=simpledialog.askstring("New Project","Artist / Project name:")
