@@ -204,6 +204,7 @@ class FloodGate(ctk.CTk):
         (BASE_DIR/LOGO_SLOT["subfolder"]).mkdir(parents=True,exist_ok=True)
 
         self.bind("<F11>",lambda e:self.attributes("-fullscreen",not self.attributes("-fullscreen")))
+        self.bind_all("<MouseWheel>",self._global_scroll)
         self._live_polling = False
         self._last_browse_state = None
         self._star_labels = {}
@@ -220,6 +221,17 @@ class FloodGate(ctk.CTk):
         return c
     def _save_config(self): save_json(CONFIG_PATH,self.config)
     def _set_status(self,msg): self.after(0,lambda:self.status_var.set(msg))
+
+    def _global_scroll(self, event):
+        widget = self.focus_get()
+        if widget:
+            # Walk up to find a CTkScrollableFrame
+            parent = widget
+            while parent:
+                if hasattr(parent, '_parent_canvas'):
+                    parent._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                    return
+                parent = parent.master if hasattr(parent, 'master') else None
 
     def _build_ui(self):
         tb=tk.Frame(self,bg=DARK_RED,height=40);tb.pack(fill="x");tb.pack_propagate(False)
@@ -305,17 +317,9 @@ class FloodGate(ctk.CTk):
             tk.Radiobutton(sr,text=l,variable=self.browse_sort,value=v,font=("Courier New",6),fg=WHITE,bg=BG_RED,selectcolor=DARK_RED,activebackground=BG_RED,activeforeground=WHITE,bd=0,indicatoron=0,padx=4,pady=1,command=lambda:self._full_rebuild()).pack(side="left")
         tk.Label(sr,text="SORT:",font=("Courier New",6,"bold"),fg=GRAY,bg=BG_RED).pack(side="left")
 
-        self.bcv=tk.Canvas(ma,bg=BG_RED,highlightthickness=0)
-        bsc=tk.Scrollbar(ma,orient="vertical",command=self.bcv.yview)
-        self.bframe=tk.Frame(self.bcv,bg=BG_RED)
-        self.bframe.bind("<Configure>",lambda e:self.bcv.configure(scrollregion=self.bcv.bbox("all")))
-        cw=self.bcv.create_window((0,0),window=self.bframe,anchor="nw")
-        self.bcv.bind("<Configure>",lambda e:self.bcv.itemconfig(cw,width=e.width))
-        self.bcv.configure(yscrollcommand=bsc.set);self.bcv.pack(side="left",fill="both",expand=True)
-        bsc.pack(side="right",fill="y")
-        def _mw(e): self.bcv.yview_scroll(int(-1*(e.delta/120)),"units")
-        self.bcv.bind("<Enter>",lambda e:self.bcv.bind_all("<MouseWheel>",_mw))
-        self.bcv.bind("<Leave>",lambda e:self.bcv.unbind_all("<MouseWheel>"))
+        self.bcv=ctk.CTkScrollableFrame(ma,fg_color=BG_RED)
+        self.bcv.pack(side="left",fill="both",expand=True)
+        self.bframe=self.bcv
         self._refresh_browse()  # initial load
 
     def _filter_search(self):
