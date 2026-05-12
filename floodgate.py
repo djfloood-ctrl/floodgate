@@ -53,7 +53,7 @@ TEMPLATES = {
     "LONGFORM CLIPS": ["longform_source","voiceover_clips"],
 }
 
-CLIP_LENGTHS = {"15s":15,"30s":30,"60s":60,"90s":90,"3min":180,"5min":300}
+CLIP_LENGTHS = {"2 secs":2,"5 secs":5,"10 secs":10,"15 secs":15,"30 secs":30,"60 secs":60,"90 secs":90,"3 min":180,"5 min":300}
 
 SLOTS = {
     "act_a_videos": {"label":"Act A — Sad / Bleak Clips","subfolder":"assets/act_a","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"Sad, bleak, melancholic, rainy day footage","side":"left"},
@@ -161,7 +161,7 @@ class ProjectManager:
         if "Default" not in self.projects: self._mkdefault()
         self.current="Default"
     def _mkdefault(self):
-        save_json(PROJECTS_DIR/"Default"/"project.json",{"name":"Default","assets":{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":""},"captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"caption_font":"Impact","num_renders":10,"format":"Reel / TikTok (9:16)","clip_length":30}})
+        save_json(PROJECTS_DIR/"Default"/"project.json",{"name":"Default","assets":{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":""},"captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"caption_font":"Impact","num_renders":10,"format":"Reel / TikTok (9:16)","clip_length":15}})
         self.projects["Default"]=load_json(PROJECTS_DIR/"Default"/"project.json")
     def _load(self):
         p={}
@@ -170,7 +170,7 @@ class ProjectManager:
         return p
     def create(self,name):
         if name in self.projects: return False
-        data={"name":name,"assets":{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":""},"captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"caption_font":"Impact","num_renders":10,"format":"Reel / TikTok (9:16)","clip_length":30}}
+        data={"name":name,"assets":{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":""},"captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"caption_font":"Impact","num_renders":10,"format":"Reel / TikTok (9:16)","clip_length":15}}
         save_json(PROJECTS_DIR/name/"project.json",data);self.projects[name]=data;return True
     def list_names(self): return sorted(self.projects.keys())
     def get(self,name): return self.projects.get(name)
@@ -230,7 +230,7 @@ class FloodGate(ctk.CTk):
         self._refresh_project_menu()
 
     def _load_config(self):
-        c=load_json(CONFIG_PATH,{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":"","num_renders":10,"caption_font":"Impact","captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"format":"Reel / TikTok (9:16)","clip_length":30}})
+        c=load_json(CONFIG_PATH,{"act_a_videos":[],"act_b_videos":[],"act_a_music":[],"act_b_music":[],"voiceover_clips":[],"logo":"","num_renders":10,"caption_font":"Impact","captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"},"settings":{"preview_mode":True,"music_volume":0.35,"format":"Reel / TikTok (9:16)","clip_length":15}})
         if "caption_font" not in c: c["caption_font"]="Impact"
         return c
     def _save_config(self): save_json(CONFIG_PATH,self.config)
@@ -482,7 +482,7 @@ class FloodGate(ctk.CTk):
         fm.config(font=("Courier New",8),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
         fm["menu"].config(font=("Courier New",8),bg=CARD_BG,fg=WHITE,bd=0);fm.pack(side="left",padx=2)
         tk.Label(fb,text="LENGTH:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(14,4))
-        lm=tk.OptionMenu(fb,self.len_var,30,*CLIP_LENGTHS.values(),command=lambda c:[self.len_var.set(int(c)),self._save_config()])
+        lm=tk.OptionMenu(fb,self.len_var,*CLIP_LENGTHS.keys(),command=lambda c:[self.len_var.set(CLIP_LENGTHS[c]),self._save_config()])
         lm.config(font=("Courier New",8),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
         lm["menu"].config(font=("Courier New",8),bg=CARD_BG,fg=WHITE,bd=0);lm.pack(side="left",padx=2)
 

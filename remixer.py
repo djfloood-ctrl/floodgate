@@ -23,7 +23,8 @@ CONFIG_PATH = BASE_DIR / "config.json"
 FFMPEG     = r"C:\ffmpeg\bin\ffmpeg.exe"
 FFPROBE    = r"C:\ffmpeg\bin\ffprobe.exe"
 
-CLIP_DURATION = 4.5   # seconds per act
+# Will be set from config in main()
+CLIP_DURATION = 4.5  # Will be overridden in main()
 
 TARGET_AR     = "44100"  # audio sample rate
 TARGET_AC     = "2"      # stereo
@@ -88,6 +89,8 @@ def normalize_video(src, out, duration, mute=False):
     total = get_duration(src)
     if total is None or total <= duration:
         start = 0.0
+        if total is not None and total < duration:
+            print(f"         ⚠ Source is {total:.1f}s, requested {duration:.1f}s — using full clip")
     else:
         start = random.uniform(0, total - duration)
 
@@ -172,6 +175,8 @@ def normalize_audio(src, duration, out):
     total = get_duration(src)
     if total is None or total <= duration:
         start = 0.0
+        if total is not None and total < duration:
+            print(f"         ⚠ Source is {total:.1f}s, requested {duration:.1f}s — using full clip")
     else:
         start = random.uniform(0, total - duration)
 
@@ -191,14 +196,28 @@ def normalize_audio(src, duration, out):
 
 
 def normalize_voice(src, out):
-    """Normalize voiceover to AAC stereo 44100hz, full length."""
-    cmd = [
-        FFMPEG, "-y",
-        "-i", src,
-        "-c:a", "aac",
-        "-ar", TARGET_AR, "-ac", TARGET_AC,
-        "-vn", out
-    ]
+    """Normalize voiceover. Under 6s: play from start. Over 6s: random subsection."""
+    total = get_duration(src)
+    if total is None or total <= 6:
+        # Use full clip from beginning
+        cmd = [
+            FFMPEG, "-y",
+            "-i", src,
+            "-c:a", "aac",
+            "-ar", TARGET_AR, "-ac", TARGET_AC,
+            "-vn", out
+        ]
+    else:
+        start = random.uniform(0, total - 6)
+        cmd = [
+            FFMPEG, "-y",
+            "-ss", f"{start:.2f}",
+            "-i", src,
+            "-t", "6",
+            "-c:a", "aac",
+            "-ar", TARGET_AR, "-ac", TARGET_AC,
+            "-vn", out
+        ]
     ok, err = run(cmd)
     if not ok:
         print(f"❌ Voice normalize error: {err}")
@@ -359,10 +378,19 @@ def render_random(index, config):
     tmp = output_dir / "_tmp"
     tmp.mkdir(exist_ok=True)
 
-    av_a  = resolve(random.choice(config["act_a_videos"]))
-    av_b  = resolve(random.choice(config["act_b_videos"]))
-    am_a  = resolve(random.choice(config["act_a_music"]))
-    am_b  = resolve(random.choice(config["act_b_music"]))
+    def pick_long_enough(choices, min_duration, label):
+        for _ in range(20):
+            pick = resolve(random.choice(choices))
+            dur = get_duration(pick)
+            if dur is None or dur >= min_duration:
+                return pick
+        # Fallback: return last pick even if too short
+        return resolve(random.choice(choices))
+
+    av_a  = pick_long_enough(config["act_a_videos"], CLIP_DURATION, "Act A")
+    av_b  = pick_long_enough(config["act_b_videos"], CLIP_DURATION, "Act B")
+    am_a  = pick_long_enough(config["act_a_music"], CLIP_DURATION, "Act A music")
+    am_b  = pick_long_enough(config["act_b_music"], CLIP_DURATION, "Act B music")
     voice = resolve(random.choice(config["voiceover_clips"]))
     logo  = resolve(config.get("logo", ""))
 
@@ -488,6 +516,8 @@ def main():
 
     config = load_config()
     check_assets(config)
+    global CLIP_DURATION
+    global CLIP_DURATION; CLIP_DURATION = config.get("settings", {}).get("clip_length", 15) / 2
 
     num_renders = config.get("num_renders", 10)
     mode = "PREVIEW (1080p)" if config["settings"].get("preview_mode") else "FULL QUALITY (4K)"
