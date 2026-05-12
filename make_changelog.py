@@ -1,0 +1,135 @@
+import subprocess, datetime
+
+log = subprocess.run(["git", "log", "--pretty=format:%H|%ai|%s"], capture_output=True, text=True)
+
+commits_html = ""
+for line in log.stdout.strip().split("\n"):
+    if not line: continue
+    parts = line.split("|")
+    if len(parts) >= 3:
+        commit_hash = parts[0][:7]
+        date = parts[1][:10]
+        msg = "|".join(parts[2:])
+        commits_html += f"                <tr><td>{date}</td><td><code>{commit_hash}</code></td><td>{msg}</td></tr>\n"
+
+html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLOODGATE — Whitepaper</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ background: #8B1A1A; color: #F0E8E0; font-family: 'Helvetica Neue', 'Segoe UI', sans-serif; line-height: 1.7; }}
+        .container {{ max-width: 960px; margin: 0 auto; padding: 60px 40px; }}
+        .logo {{ font-size: 48px; font-weight: 900; letter-spacing: -2px; margin-bottom: 4px; }}
+        .tagline {{ font-family: 'Courier New', monospace; color: #C8B0B0; font-size: 11px; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 40px; }}
+        .divider {{ height: 1px; background: #C84040; margin: 50px 0; }}
+        h1 {{ font-size: 36px; font-weight: 900; margin-bottom: 20px; }}
+        h2 {{ font-size: 22px; font-weight: 700; margin: 40px 0 16px; color: #FF4444; }}
+        h3 {{ font-size: 16px; font-weight: 700; margin: 24px 0 10px; }}
+        p {{ margin-bottom: 16px; color: #E8DDD4; }}
+        ul {{ margin: 12px 0 20px 20px; }}
+        li {{ margin-bottom: 8px; color: #E8DDD4; }}
+        blockquote {{ background: #6B1010; border-left: 4px solid #FF4444; padding: 20px 24px; margin: 20px 0; border-radius: 0 8px 8px 0; font-style: italic; }}
+        blockquote strong {{ display: block; margin-top: 12px; font-style: normal; color: #C8B0B0; font-size: 13px; }}
+        table {{ width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }}
+        th {{ background: #6B1010; padding: 12px 16px; text-align: left; font-family: 'Courier New', monospace; color: #FF4444; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }}
+        td {{ padding: 10px 16px; border-bottom: 1px solid #9E2020; font-family: 'Courier New', monospace; font-size: 12px; }}
+        tr:hover td {{ background: #9E2020; }}
+        code {{ background: #6B1010; padding: 2px 6px; border-radius: 4px; font-size: 12px; }}
+        .footer {{ margin-top: 60px; color: #C8B0B0; font-family: 'Courier New', monospace; font-size: 11px; text-align: center; }}
+        @media (max-width: 768px) {{ .container {{ padding: 30px 20px; }} .logo {{ font-size: 32px; }} }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">FLOODGATE</div>
+        <div class="tagline">Short-Form Content Engine • Whitepaper v2.2</div>
+
+        <div class="divider"></div>
+
+        <h1>What Is FLOODGATE?</h1>
+        <p>FLOODGATE is a short-form content generation engine that transforms raw video, audio, and voiceover assets into randomized, formatted, captioned clips optimized for Instagram Reels, TikTok, YouTube Shorts, and more. It combines a YEEZY-inspired brutalist design aesthetic with production-grade FFmpeg rendering to solve the fundamental problem facing every creator: <strong>volume.</strong></p>
+        <p>The algorithm demands constant output. FLOODGATE turns one batch of source material into hundreds of unique clips — each with different timestamps, different music pairings, random voiceover combinations. No two renders are identical. What would take hours of manual editing takes minutes of automated rendering.</p>
+
+        <h2>Core Capabilities</h2>
+        <ul>
+            <li><strong>Contrast Engine</strong> — Sad vs. Happy clip pairing with music beds and AI voiceovers</li>
+            <li><strong>Format Presets</strong> — Instagram Reel (1080×1920), TikTok, YouTube Shorts, Widescreen (16:9), Cinematic (21:9)</li>
+            <li><strong>Asset Management</strong> — Drag-and-drop video, audio, and voiceover slots with file size tracking</li>
+            <li><strong>Smart Browse</strong> — Gallery view with favorites, tags, folders, search, and sort-by-date/views/name</li>
+            <li><strong>Trash System</strong> — Instant trash with undo, permanent delete with confirmation</li>
+            <li><strong>Live Rendering</strong> — Browse auto-updates during render batches, polling stops when complete</li>
+            <li><strong>Project Bins</strong> — Save/load artist profiles with independent asset pools and settings</li>
+            <li><strong>Git Version Control</strong> — Every feature checkpointed, fully revertible</li>
+        </ul>
+
+        <h2>Business Applications</h2>
+        <h3>Music Industry</h3>
+        <p>Artists and DJs can generate hundreds of promotional clips from a single music video, live set recording, or studio session. Each clip features different sections of the track, different visual moments, and branded captions — ready for Reels, TikTok, and Stories.</p>
+        <h3>Content Agencies</h3>
+        <p>Scale short-form production from dozens to thousands of clips per client per month. Template-based rendering ensures brand consistency across all output. The browse and tag system enables rapid content library management.</p>
+        <h3>Podcast Networks</h3>
+        <p>Extract highlight clips from long-form episodes automatically. Pair quote-worthy moments with branded visuals and captions. Feed the algorithm without manual editing.</p>
+        <h3>Sports Media</h3>
+        <p>Clip goal reactions, highlight plays, and post-game moments in batches. Multiple format outputs from a single source file.</p>
+        <h3>Comedy & Entertainment</h3>
+        <p>Turn specials and sets into hundreds of shareable clips. Random extraction ensures each clip feels fresh and authentic.</p>
+
+        <div class="divider"></div>
+
+        <h2>Industry Praise</h2>
+        <blockquote>
+            "FLOODGATE is what happens when you combine the brutalist minimalism of YEEZY with the raw utility of ffmpeg. It doesn't ask permission. It just renders. Five stars."
+            <strong>— Forbes (unofficial, but they'd say this)</strong>
+        </blockquote>
+        <blockquote>
+            "We've analyzed the codebase. The in-place filtering architecture alone represents a paradigm shift in how Tkinter applications should handle state management. Also the red is very red."
+            <strong>— MIT Technology Review (spiritually)</strong>
+        </blockquote>
+        <blockquote>
+            "I showed FLOODGATE to my board. They asked if it was built by a team of engineers. I said no, it was built by one person in Notepad with git commits. They didn't believe me."
+            <strong>— A16Z Partner (hypothetically)</strong>
+        </blockquote>
+        <blockquote>
+            "The instant star toggle alone — no page reload, no flicker, just pure DOM manipulation energy in a Python GUI — deserves a Webby. Unfortunately those are for websites. But if they had a category for 'most elegant tkinter hack,' FLOODGATE sweeps."
+            <strong>— The Verge (in an alternate timeline)</strong>
+        </blockquote>
+        <blockquote>
+            "We tried to build something like this internally. It took our team six months and still crashed on long filenames. FLOODGATE handles 200MB video files, corrupt H.264 frames, and emoji in trash buttons without breaking a sweat. Respect."
+            <strong>— Senior Engineer, Adobe Premiere Team (we assume)</strong>
+        </blockquote>
+        <blockquote>
+            "The render-then-poll architecture where FLOODGATE watches its own output directory for new files and updates the gallery in real-time? That's not a feature. That's a flex."
+            <strong>— Hacker News Top Comment (predicted)</strong>
+        </blockquote>
+        <blockquote>
+            "I don't know what a 'git commit' is but this program made me 47 TikToks while I was eating cereal. 10/10."
+            <strong>— Actual User (probably you)</strong>
+        </blockquote>
+
+        <div class="divider"></div>
+
+        <h2>Commit History</h2>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Commit</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+{commits_html}
+            </tbody>
+        </table>
+
+        <div class="divider"></div>
+
+        <p class="footer">FLOODGATE v2.2 — Built with Python, CustomTkinter, FFmpeg, and an unreasonable amount of git commits.</p>
+    </div>
+</body>
+</html>
+"""
+
+with open("FLOODGATE_Whitepaper.html", "w", encoding="utf-8") as f:
+    f.write(html)
+
+print("FLOODGATE_Whitepaper.html created - open in browser")
