@@ -448,13 +448,14 @@ class FloodGate(ctk.CTk):
 
         rf=None
         for i,vid in enumerate(videos):
-            if i%3==0: rf=tk.Frame(self.bframe,bg=BG_RED);rf.pack(fill="x",padx=8,pady=4)
+            if i%4==0: rf=tk.Frame(self.bframe,bg=BG_RED);rf.pack(pady=4)
 
             is_fav=self.meta.is_favorite(vid.name);tl=self.meta.get_tags(vid.name)
             views=self.meta.get_views(vid.name);fn=self.meta.get_folder(vid.name)
 
-            card=tk.Frame(rf,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
-            card.pack(side="left",padx=4,fill="x",expand=True)
+            card=tk.Frame(rf,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER,width=180,height=210)
+            card.pack(side="left",padx=4)
+            card.pack_propagate(False)
             card.video_name = vid.name
             card_data = {'frame': card}
 
@@ -469,8 +470,8 @@ class FloodGate(ctk.CTk):
             if tm:db.bind("<Button-1>",lambda e,v=vid:self._delete_forever_confirm(v))
             else:db.bind("<Button-1>",lambda e,v=vid:self._move_trash_instant(v))
 
-            nm=vid.stem[:25]+("..." if len(vid.stem)>25 else "")
-            tk.Label(card,text=nm,font=("Courier New",8,"bold"),fg=WHITE,bg=CARD_BG,wraplength=180).pack(pady=(4,1))
+            nm=vid.stem[:18]+("..." if len(vid.stem)>18 else "")
+            tk.Label(card,text=nm,font=("Courier New",8,"bold"),fg=WHITE,bg=CARD_BG,wraplength=140).pack(pady=(4,1))
             dt=datetime.fromtimestamp(vid.stat().st_mtime).strftime("%m/%d/%y %H:%M")
             tk.Label(card,text=dt,font=("Courier New",7),fg=GRAY,bg=CARD_BG).pack()
             tk.Label(card,text=f"{human_size(vid.stat().st_size)}  •  {views} views",font=("Courier New",7),fg=GRAY,bg=CARD_BG).pack()
@@ -618,11 +619,11 @@ class FloodGate(ctk.CTk):
 
     def _slot(self,parent,key,meta):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
-        card.pack(fill="x",pady=(0,4))
+        card.pack(fill="x",pady=(0,6),ipady=4)
         tk.Label(card,text=meta["label"],font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
         tk.Label(card,text=meta["hint"],font=("Courier New",6),fg=GRAY,bg=CARD_BG).pack(pady=(0,4))
-        lb=tk.Listbox(card,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=("Courier New",8),height=2,bd=0,highlightthickness=0,activestyle="none")
-        lb.pack(fill="x",padx=8,pady=(0,4));self.listboxes[key]=lb
+        lb=tk.Listbox(card,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=("Courier New",8),height=3,bd=0,highlightthickness=0,activestyle="none")
+        lb.pack(fill="x",padx=12,pady=(0,6));self.listboxes[key]=lb
         lb.bind("<Delete>",lambda e,k=key:self._remove_selected(k))
         lb.bind("<BackSpace>",lambda e,k=key:self._remove_selected(k))
         br=tk.Frame(card,bg=CARD_BG);br.pack(pady=(0,8))
@@ -631,16 +632,16 @@ class FloodGate(ctk.CTk):
 
     def _logo_card(self,parent):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
-        card.pack(fill="x",pady=(0,4))
+        card.pack(fill="x",pady=(0,6),ipady=4)
         tk.Label(card,text=LOGO_SLOT["label"],font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
         tk.Label(card,text=LOGO_SLOT["hint"],font=("Courier New",6),fg=GRAY,bg=CARD_BG).pack(pady=(0,4))
         self.logo_var=tk.StringVar()
-        tk.Entry(card,textvariable=self.logo_var,font=("Courier New",8),bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,justify="center").pack(fill="x",padx=8,ipady=3)
+        tk.Entry(card,textvariable=self.logo_var,font=("Courier New",8),bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,justify="center").pack(fill="x",padx=16,ipady=3)
         HoverButton(card,text="SELECT LOGO",font=("Courier New",8,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=12,pady=3,cursor="hand2",command=self._add_logo).pack(pady=(4,8))
 
     def _settings_card(self,parent):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
-        card.pack(fill="x",pady=(0,4))
+        card.pack(fill="x",pady=(0,6),ipady=4)
         tk.Label(card,text="SETTINGS",font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,4))
         self.preview_var=tk.BooleanVar(value=self.config["settings"].get("preview_mode",True))
         tk.Checkbutton(card,text="Preview Mode (1080p)",variable=self.preview_var,font=("Courier New",7),fg=WHITE,bg=CARD_BG,selectcolor=DARK_RED,activebackground=CARD_BG,activeforeground=WHITE,relief="flat",command=self._save_settings).pack(pady=(0,4))
@@ -664,7 +665,7 @@ class FloodGate(ctk.CTk):
 
     def _render_card(self,parent):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
-        card.pack(fill="x",pady=(0,4))
+        card.pack(fill="x",pady=(0,6),ipady=4)
         tk.Label(card,text="RENDER",font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,2))
         self.render_count_var=tk.IntVar(value=self.config.get("num_renders",10))
         self.count_label=tk.Label(card,text=str(self.render_count_var.get()),font=("Helvetica Neue",28,"bold"),fg=WHITE,bg=CARD_BG)
