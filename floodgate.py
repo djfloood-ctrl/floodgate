@@ -270,7 +270,7 @@ class FloodGate(ctk.CTk):
         sf=ctk.CTkScrollableFrame(tab,fg_color=BG_RED)
         sf.pack(side="left",fill="both",expand=True)
 
-        fb=tk.Frame(sf,bg=DARK_RED,height=34);fb.pack(fill="x",padx=14,pady=(8,4));fb.pack_propagate(False)
+        fb=tk.Frame(sf,bg=DARK_RED,height=34);fb.pack(fill="x",padx=14,pady=(6,4));fb.pack_propagate(False)
         tk.Label(fb,text="FORMAT:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(10,4))
         fm=tk.OptionMenu(fb,self.fmt_var,"Instagram Reel",*FORMAT_PRESETS.keys(),command=lambda c:[self.fmt_var.set(c),self._save_config()])
         fm.config(font=("Courier New",8),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
@@ -280,7 +280,7 @@ class FloodGate(ctk.CTk):
         lm.config(font=("Courier New",8),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
         lm["menu"].config(font=("Courier New",8),bg=CARD_BG,fg=WHITE,bd=0);lm.pack(side="left",padx=2)
 
-        af=tk.Frame(sf,bg=BG_RED);af.pack(fill="x",padx=14,pady=(4,0))
+        af=tk.Frame(sf,bg=BG_RED);af.pack(fill="x",padx=60,pady=(4,0))
         af.columnconfigure(0,weight=1);af.columnconfigure(1,weight=1)
         lc=tk.Frame(af,bg=BG_RED);lc.grid(row=0,column=0,sticky="nsew",padx=(0,3))
         rc=tk.Frame(af,bg=BG_RED);rc.grid(row=0,column=1,sticky="nsew",padx=(3,0))
@@ -288,7 +288,7 @@ class FloodGate(ctk.CTk):
             m=SLOTS[key]
             if m["side"]=="left": self._slot(lc,key,m)
             else: self._slot(rc,key,m)
-        ct=tk.Frame(sf,bg=BG_RED);ct.pack(fill="x",padx=60,pady=(4,0))
+        ct=tk.Frame(sf,bg=BG_RED);ct.pack(fill="x",padx=80,pady=(4,0))
         self._slot(ct,"voiceover_clips",SLOTS["voiceover_clips"])
         self._logo_card(ct);self._settings_card(ct);self._render_card(ct)
         note=tk.Frame(ct,bg=DARK_RED,highlightthickness=1,highlightbackground=BORDER)
@@ -298,7 +298,7 @@ class FloodGate(ctk.CTk):
 
     def _build_browse(self):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["BROWSE"]=tab
-        sidebar=tk.Frame(tab,bg=DARK_RED,width=160);sidebar.pack(side="left",fill="y");sidebar.pack_propagate(False)
+        sidebar=tk.Frame(tab,bg=DARK_RED,width=160);sidebar.pack(side="left",fill="y");sidebar.pack_propagate(True)
         tk.Label(sidebar,text="FOLDERS",font=("Helvetica Neue",9,"bold"),fg=WHITE,bg=DARK_RED).pack(pady=(10,4),padx=10)
         self.flb=tk.Listbox(sidebar,bg=DARK_RED,fg=WHITE,selectbackground=ACCENT,selectforeground=WHITE,font=("Courier New",8),bd=0,height=8)
         self.flb.pack(fill="both",padx=6,pady=(0,4),expand=True);self.flb.bind("<<ListboxSelect>>",self._on_folder)
@@ -623,20 +623,20 @@ class FloodGate(ctk.CTk):
 
     def _slot(self,parent,key,meta):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
-        card.pack(fill="x",pady=(0,6),ipady=4)
+        card.pack(fill="x",pady=(0,6),ipady=2)
         tk.Label(card,text=meta["label"],font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
         tk.Label(card,text=meta["hint"],font=("Courier New",6),fg=GRAY,bg=CARD_BG).pack(pady=(0,4))
         lb=tk.Listbox(card,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=("Courier New",8),height=3,bd=0,highlightthickness=0,activestyle="none")
-        lb.pack(fill="x",padx=12,pady=(0,6));self.listboxes[key]=lb
+        lb.pack(fill="x",padx=12,pady=(0,4));self.listboxes[key]=lb
         lb.bind("<Delete>",lambda e,k=key:self._remove_selected(k))
         lb.bind("<BackSpace>",lambda e,k=key:self._remove_selected(k))
-        br=tk.Frame(card,bg=CARD_BG);br.pack(pady=(0,8))
+        br=tk.Frame(card,bg=CARD_BG);br.pack(pady=(0,6))
         HoverButton(br,text="ADD",font=("Courier New",8,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=10,pady=2,cursor="hand2",command=lambda k=key,m=meta:self._add_files(k,m)).pack(side="left",padx=2)
         HoverButton(br,text="REMOVE",font=("Courier New",8),fg=WHITE,bg=DARK_RED,hover_bg="#7A0000",bd=0,padx=10,pady=2,cursor="hand2",command=lambda k=key:self._remove_selected(k)).pack(side="left",padx=2)
 
     def _logo_card(self,parent):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
-        card.pack(fill="x",pady=(0,6),ipady=4)
+        card.pack(fill="x",pady=(0,6),ipady=2)
         tk.Label(card,text=LOGO_SLOT["label"],font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
         tk.Label(card,text=LOGO_SLOT["hint"],font=("Courier New",6),fg=GRAY,bg=CARD_BG).pack(pady=(0,4))
         self.logo_var=tk.StringVar()
@@ -645,7 +645,7 @@ class FloodGate(ctk.CTk):
 
     def _settings_card(self,parent):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
-        card.pack(fill="x",pady=(0,6),ipady=4)
+        card.pack(fill="x",pady=(0,6),ipady=2)
         tk.Label(card,text="SETTINGS",font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,4))
         self.preview_var=tk.BooleanVar(value=self.config["settings"].get("preview_mode",True))
         tk.Checkbutton(card,text="Preview Mode (1080p)",variable=self.preview_var,font=("Courier New",7),fg=WHITE,bg=CARD_BG,selectcolor=DARK_RED,activebackground=CARD_BG,activeforeground=WHITE,relief="flat",command=self._save_settings).pack(pady=(0,4))
@@ -663,13 +663,13 @@ class FloodGate(ctk.CTk):
         for act,vn,lb in [("act_a","cap_a_var","ACT A"),("act_b","cap_b_var","ACT B")]:
             tk.Label(card,text=lb,font=("Courier New",7,"bold"),fg=GRAY,bg=CARD_BG).pack(pady=(3,1))
             e=tk.Entry(card,font=("Courier New",8),bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,highlightthickness=1,highlightcolor=BORDER,highlightbackground=CARD_BG,justify="center")
-            e.pack(fill="x",padx=8,ipady=2)
+            e.pack(fill="x",padx=16,ipady=2)
             sv=tk.StringVar(value=caps.get(act,""));e.configure(textvariable=sv);setattr(self,vn,sv)
         HoverButton(card,text="SAVE",font=("Courier New",8,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=12,pady=3,command=self._save_settings).pack(pady=(8,8))
 
     def _render_card(self,parent):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
-        card.pack(fill="x",pady=(0,6),ipady=4)
+        card.pack(fill="x",pady=(0,6),ipady=2)
         tk.Label(card,text="RENDER",font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,2))
         self.render_count_var=tk.IntVar(value=self.config.get("num_renders",10))
         self.count_label=tk.Label(card,text=str(self.render_count_var.get()),font=("Helvetica Neue",28,"bold"),fg=WHITE,bg=CARD_BG)
