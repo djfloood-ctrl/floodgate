@@ -24,9 +24,7 @@ FFMPEG     = r"C:\ffmpeg\bin\ffmpeg.exe"
 FFPROBE    = r"C:\ffmpeg\bin\ffprobe.exe"
 
 CLIP_DURATION = 4.5   # seconds per act
-TARGET_W      = 1920
-TARGET_H      = 1080
-TARGET_FPS    = 30
+
 TARGET_AR     = "44100"  # audio sample rate
 TARGET_AC     = "2"      # stereo
 
@@ -472,7 +470,18 @@ def validate_video(path):
     except subprocess.TimeoutExpired:
         return False
 
+def apply_config_targets():
+    cfg = load_config()
+    settings = cfg.get("settings", {})
+    import sys
+    # Override module-level constants
+    mod = sys.modules[__name__]
+    mod.TARGET_W = settings.get("target_w", 1920)
+    mod.TARGET_H = settings.get("target_h", 1080)
+    mod.TARGET_FPS = settings.get("target_fps", 30)
+
 def main():
+    apply_config_targets()
     print("\n══════════════════════════════════════")
     print("   REMIXER v5.2 — RANDOMIZED MODE")
     print("══════════════════════════════════════\n")
