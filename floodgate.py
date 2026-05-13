@@ -48,7 +48,7 @@ FORMAT_PRESETS = {
 "Custom":{"w":1080,"h":1920,"fps":30},
 }
 
-TEMPLATES = {
+DEFAULT_TEMPLATES = {
     "SAD CLIP / HAPPY CLIP": ["act_a_videos","act_b_videos","act_a_music","act_b_music","voiceover_clips"],
     "LONGFORM CLIPS": ["longform_source","voiceover_clips"],
 }
@@ -193,7 +193,17 @@ class FloodGate(ctk.CTk):
         self.geometry("960x680")
         self.minsize(800,600)
 
+        self.fonts = {
+            "title": ("Helvetica Neue", 14, "bold"),
+            "heading": ("Helvetica Neue", 10, "bold"),
+            "subheading": ("Helvetica Neue", 9, "bold"),
+            "body": ("Courier New", 8),
+            "small": ("Courier New", 7),
+            "tiny": ("Courier New", 6),
+            "button": ("Courier New", 8, "bold"),
+        }
         self.config=self._load_config()
+        self.templates = self.config.get("templates", dict(DEFAULT_TEMPLATES))
         self.projects=ProjectManager()
         self.meta=ClipMeta(META_PATH)
         self.upload=UploadManager()
@@ -431,6 +441,63 @@ class FloodGate(ctk.CTk):
                 else:
                     card.pack_forget()
 
+    def _save_format_preset(self):
+        name = simpledialog.askstring("Save Format", "Preset name (e.g. 'My Custom 4K'):")
+        if not name:
+            return
+        FORMAT_PRESETS[name] = {"w": self.config["settings"].get("target_w", 1080),
+                                 "h": self.config["settings"].get("target_h", 1920),
+                                 "fps": self.config["settings"].get("target_fps", 30)}
+        menu = self.fmt_menu["menu"]
+        menu.delete(0, "end")
+        for f in FORMAT_PRESETS.keys():
+            menu.add_command(label=f, command=lambda v=f: self._on_format_change(v))
+        self.fmt_var.set(name)
+        self._set_status(f"Format saved: {name}")
+
+    def _remove_format_preset(self):
+        name = self.fmt_var.get()
+        if name in ["Reel / TikTok (9:16)", "Square Post (1:1)", "Widescreen (16:9)", "Cinematic (21:9)", "Custom"]:
+            messagebox.showinfo("Protected", "Cannot remove default formats.")
+            return
+        if messagebox.askyesno("Remove", f"Delete format '{name}'?"):
+            del FORMAT_PRESETS[name]
+            menu = self.fmt_menu["menu"]
+            menu.delete(0, "end")
+            for f in FORMAT_PRESETS.keys():
+                menu.add_command(label=f, command=lambda v=f: self._on_format_change(v))
+            self.fmt_var.set("Widescreen (16:9)")
+            self._set_status(f"Removed: {name}")
+
+    def _save_length_preset(self):
+        name = simpledialog.askstring("Save Length", "Preset name (e.g. '45 secs'):")
+        if not name:
+            return
+        CLIP_LENGTHS[name] = self.len_var.get()
+        menu = self.len_menu["menu"]
+        menu.delete(0, "end")
+        for k, v in CLIP_LENGTHS.items():
+            menu.add_command(label=k, command=lambda v=v, k=k: (self.len_var.set(v), self._save_config()))
+        self._set_status(f"Length saved: {name}")
+
+    def _remove_length_preset(self):
+        current = self.len_var.get()
+        to_remove = None
+        for k, v in CLIP_LENGTHS.items():
+            if v == current and k not in ["2 secs", "5 secs", "10 secs", "15 secs", "30 secs", "60 secs", "90 secs", "3 min", "5 min"]:
+                to_remove = k
+                break
+        if not to_remove:
+            messagebox.showinfo("Protected", "Cannot remove default lengths.")
+            return
+        if messagebox.askyesno("Remove", f"Delete length '{to_remove}'?"):
+            del CLIP_LENGTHS[to_remove]
+            menu = self.len_menu["menu"]
+            menu.delete(0, "end")
+            for k, v in CLIP_LENGTHS.items():
+                menu.add_command(label=k, command=lambda v=v, k=k: (self.len_var.set(v), self._save_config()))
+            self._set_status(f"Removed: {to_remove}")
+
     def _build_ui(self):
         tb=tk.Frame(self,bg=DARK_RED,height=40);tb.pack(fill="x");tb.pack_propagate(False)
         try:
@@ -438,23 +505,23 @@ class FloodGate(ctk.CTk):
                 img=tk.PhotoImage(file=str(LOGO_PATH)).subsample(4,4)
                 tk.Label(tb,image=img,bg=DARK_RED).pack(side="left",padx=(12,4),pady=2);self._logo_img=img
         except: pass
-        tk.Label(tb,text="FLOODGATE",font=("Helvetica Neue",14,"bold"),fg=WHITE,bg=DARK_RED).pack(side="left",pady=6)
+        tk.Label(tb,text="FLOODGATE",font=self.fonts["title"],fg=WHITE,bg=DARK_RED).pack(side="left",pady=6)
         self.proj_var=tk.StringVar(value="Default")
         self.proj_menu=tk.OptionMenu(tb,self.proj_var,"Default",command=self._on_project)
-        self.proj_menu.config(font=("Courier New",7),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=1,highlightcolor=BORDER)
-        self.proj_menu["menu"].config(font=("Courier New",8),bg=CARD_BG,fg=WHITE,activebackground=DARK_RED,bd=0)
+        self.proj_menu.config(font=self.fonts["small"],bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=1,highlightcolor=BORDER)
+        self.proj_menu["menu"].config(font=self.fonts["body"],bg=CARD_BG,fg=WHITE,activebackground=DARK_RED,bd=0)
         self.proj_menu.pack(side="left",padx=6)
         tk.Button(tb,text="+",font=("Courier New",8,"bold"),fg=BLACK,bg=WHITE,activebackground=GRAY,bd=0,padx=8,pady=1,cursor="hand2",command=self._new_project).pack(side="left",padx=2)
         self.tab_btns={}
         for name,icon in [("ASSETS","⬡"),("BROWSE","▹"),("UPLOAD","↑")]:
-            btn=tk.Button(tb,text=f" {icon} {name} ",font=("Courier New",9,"bold"),fg=TAB_INACTIVE,bg=DARK_RED,activebackground=DARK_RED,activeforeground=WHITE,bd=0,cursor="hand2",relief="flat",command=lambda n=name:self.show_tab(n))
+            btn=tk.Button(tb,text=f" {icon} {name} ",font=self.fonts["button"],fg=TAB_INACTIVE,bg=DARK_RED,activebackground=DARK_RED,activeforeground=WHITE,bd=0,cursor="hand2",relief="flat",command=lambda n=name:self.show_tab(n))
             btn.pack(side="left",ipady=8);self.tab_btns[name]=btn
         self.content=tk.Frame(self,bg=BG_RED);self.content.pack(fill="both",expand=True)
         self.tabs={}
         self._build_assets();self._build_browse();self._build_upload()
         self.show_tab("ASSETS")
         self.status_var=tk.StringVar(value="Ready  •  Ctrl+R  •  F11")
-        tk.Label(self,textvariable=self.status_var,font=("Courier New",7),fg=GRAY,bg=DARK_RED,anchor="w").pack(fill="x",padx=12,pady=4)
+        tk.Label(self,textvariable=self.status_var,font=self.fonts["small"],fg=GRAY,bg=DARK_RED,anchor="w").pack(fill="x",padx=12,pady=4)
 
     def show_tab(self,name):
         for n,f in self.tabs.items(): f.pack_forget()
@@ -473,18 +540,18 @@ class FloodGate(ctk.CTk):
 
         tk.Label(fb,text="TEMPLATE:",font=("Courier New",8,"bold"),fg=ACCENT,bg=DARK_RED).pack(side="left",padx=(10,4))
         self.template_var = tk.StringVar(value="SAD CLIP / HAPPY CLIP")
-        tm = tk.OptionMenu(fb, self.template_var, *TEMPLATES.keys(), command=self._on_template_change)
-        tm.config(font=("Courier New",8), bg=DARK_RED, fg=WHITE, activebackground=CARD_BG, bd=0, highlightthickness=0)
-        tm["menu"].config(font=("Courier New",8), bg=CARD_BG, fg=WHITE, bd=0)
+        tm = tk.OptionMenu(fb, self.template_var, *self.templates.keys(), command=self._on_template_change)
+        tm.config(font=self.fonts["body"], bg=DARK_RED, fg=WHITE, activebackground=CARD_BG, bd=0, highlightthickness=0)
+        tm["menu"].config(font=self.fonts["body"], bg=CARD_BG, fg=WHITE, bd=0)
         tm.pack(side="left", padx=2)
         tk.Label(fb,text="FORMAT:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(10,4))
         fm=tk.OptionMenu(fb,self.fmt_var,*FORMAT_PRESETS.keys(),command=self._on_format_change)
-        fm.config(font=("Courier New",8),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
-        fm["menu"].config(font=("Courier New",8),bg=CARD_BG,fg=WHITE,bd=0);fm.pack(side="left",padx=2)
+        fm.config(font=self.fonts["body"],bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
+        fm["menu"].config(font=self.fonts["body"],bg=CARD_BG,fg=WHITE,bd=0);fm.pack(side="left",padx=2)
         tk.Label(fb,text="LENGTH:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(14,4))
         lm=tk.OptionMenu(fb,self.len_var,*CLIP_LENGTHS.keys(),command=lambda c:[self.len_var.set(CLIP_LENGTHS[c]),self._save_config()])
-        lm.config(font=("Courier New",8),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
-        lm["menu"].config(font=("Courier New",8),bg=CARD_BG,fg=WHITE,bd=0);lm.pack(side="left",padx=2)
+        lm.config(font=self.fonts["body"],bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
+        lm["menu"].config(font=self.fonts["body"],bg=CARD_BG,fg=WHITE,bd=0);lm.pack(side="left",padx=2)
 
         af=tk.Frame(sf,bg=BG_RED);af.pack(fill="x",padx=60,pady=(4,0))
         af.columnconfigure(0,weight=1);af.columnconfigure(1,weight=1)
@@ -500,27 +567,27 @@ class FloodGate(ctk.CTk):
         note=tk.Frame(ct,bg=DARK_RED,highlightthickness=1,highlightbackground=BORDER)
         note.pack(fill="x",pady=(6,0))
         tk.Label(note,text="◈  RENDER OUTPUT → EXTERNAL TERMINAL",font=("Courier New",7,"bold"),fg=WHITE,bg=DARK_RED).pack(pady=8)
-        tk.Label(ct,text="Ready  •  Ctrl+R  •  F11",font=("Courier New",7),fg=GRAY,bg=BG_RED).pack(pady=(6,20))
+        tk.Label(ct,text="Ready  •  Ctrl+R  •  F11",font=self.fonts["small"],fg=GRAY,bg=BG_RED).pack(pady=(6,20))
 
     def _build_browse(self):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["BROWSE"]=tab
         sidebar=tk.Frame(tab,bg=DARK_RED,width=160);sidebar.pack(side="left",fill="y");sidebar.pack_propagate(True)
-        tk.Label(sidebar,text="FOLDERS",font=("Helvetica Neue",9,"bold"),fg=WHITE,bg=DARK_RED).pack(pady=(10,4),padx=10)
-        self.flb=tk.Listbox(sidebar,bg=DARK_RED,fg=WHITE,selectbackground=ACCENT,selectforeground=WHITE,font=("Courier New",8),bd=0,height=8)
+        tk.Label(sidebar,text="FOLDERS",font=self.fonts["subheading"],fg=WHITE,bg=DARK_RED).pack(pady=(10,4),padx=10)
+        self.flb=tk.Listbox(sidebar,bg=DARK_RED,fg=WHITE,selectbackground=ACCENT,selectforeground=WHITE,font=self.fonts["body"],bd=0,height=8)
         self.flb.pack(fill="both",padx=6,pady=(0,4),expand=True);self.flb.bind("<<ListboxSelect>>",self._on_folder)
         tk.Button(sidebar,text="+ FOLDER",font=("Courier New",7,"bold"),fg=BLACK,bg=WHITE,activebackground=GRAY,bd=0,padx=8,pady=2,cursor="hand2",command=self._new_folder).pack(padx=6,pady=2)
-        tk.Label(sidebar,text="TAGS",font=("Helvetica Neue",9,"bold"),fg=WHITE,bg=DARK_RED).pack(pady=(12,4),padx=10)
-        self.tlb=tk.Listbox(sidebar,bg=DARK_RED,fg=WHITE,selectbackground=ACCENT,selectforeground=WHITE,font=("Courier New",8),bd=0,height=6)
+        tk.Label(sidebar,text="TAGS",font=self.fonts["subheading"],fg=WHITE,bg=DARK_RED).pack(pady=(12,4),padx=10)
+        self.tlb=tk.Listbox(sidebar,bg=DARK_RED,fg=WHITE,selectbackground=ACCENT,selectforeground=WHITE,font=self.fonts["body"],bd=0,height=6)
         self.tlb.pack(fill="both",padx=6,pady=(0,4),expand=True);self.tlb.bind("<<ListboxSelect>>",self._on_tag)
 
         ma=tk.Frame(tab,bg=BG_RED);ma.pack(side="left",fill="both",expand=True)
         ctr=tk.Frame(ma,bg=BG_RED);ctr.pack(fill="x",padx=12,pady=(8,4))
-        tk.Label(ctr,text="BROWSE",font=("Helvetica Neue",14,"bold"),fg=WHITE,bg=BG_RED).pack(side="left")
-        HoverButton(ctr,text="↻",font=("Courier New",9,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=10,pady=3,cursor="hand2",command=lambda:self._refresh_browse()).pack(side="right",padx=2)  # MANUAL REFRESH ONLY
-        tk.Entry(ctr,textvariable=self.browse_search,font=("Courier New",8),bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,width=18,highlightthickness=1,highlightcolor=BORDER).pack(side="right",padx=2,ipady=2)
+        tk.Label(ctr,text="BROWSE",font=self.fonts["title"],fg=WHITE,bg=BG_RED).pack(side="left")
+        HoverButton(ctr,text="↻",font=self.fonts["button"],fg=BLACK,bg=WHITE,bd=0,padx=10,pady=3,cursor="hand2",command=lambda:self._refresh_browse()).pack(side="right",padx=2)  # MANUAL REFRESH ONLY
+        tk.Entry(ctr,textvariable=self.browse_search,font=self.fonts["body"],bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,width=18,highlightthickness=1,highlightcolor=BORDER).pack(side="right",padx=2,ipady=2)
         sr=tk.Frame(ma,bg=BG_RED);sr.pack(fill="x",padx=12,pady=(0,4))
         for l,v in [("DATE ↓","date_desc"),("★","favs_first"),("NAME","name_asc")]:
-            tk.Radiobutton(sr,text=l,variable=self.browse_sort,value=v,font=("Courier New",6),fg=WHITE,bg=BG_RED,selectcolor=DARK_RED,activebackground=BG_RED,activeforeground=WHITE,bd=0,indicatoron=0,padx=4,pady=1,command=lambda:self._full_rebuild()).pack(side="left")
+            tk.Radiobutton(sr,text=l,variable=self.browse_sort,value=v,font=self.fonts["tiny"],fg=WHITE,bg=BG_RED,selectcolor=DARK_RED,activebackground=BG_RED,activeforeground=WHITE,bd=0,indicatoron=0,padx=4,pady=1,command=lambda:self._full_rebuild()).pack(side="left")
         tk.Label(sr,text="SORT:",font=("Courier New",6,"bold"),fg=GRAY,bg=BG_RED).pack(side="left")
 
         self.bcv=ctk.CTkScrollableFrame(ma,fg_color=BG_RED)
@@ -684,11 +751,11 @@ class FloodGate(ctk.CTk):
             nm=vid.stem[:18]+("..." if len(vid.stem)>18 else "")
             tk.Label(card,text=nm,font=("Courier New",8,"bold"),fg=WHITE,bg=CARD_BG,wraplength=140).pack(pady=(4,1))
             dt=datetime.fromtimestamp(vid.stat().st_mtime).strftime("%m/%d/%y %H:%M")
-            tk.Label(card,text=dt,font=("Courier New",7),fg=GRAY,bg=CARD_BG).pack()
-            tk.Label(card,text=f"{human_size(vid.stat().st_size)}  •  {views} views",font=("Courier New",7),fg=GRAY,bg=CARD_BG).pack()
+            tk.Label(card,text=dt,font=self.fonts["small"],fg=GRAY,bg=CARD_BG).pack()
+            tk.Label(card,text=f"{human_size(vid.stat().st_size)}  •  {views} views",font=self.fonts["small"],fg=GRAY,bg=CARD_BG).pack()
 
             if fn and fn!="all" and not tm:
-                flbl=tk.Label(card,text=f"[{fn}]",font=("Courier New",7),fg=ACCENT,bg=CARD_BG)
+                flbl=tk.Label(card,text=f"[{fn}]",font=self.fonts["small"],fg=ACCENT,bg=CARD_BG)
                 flbl.pack();card_data['folder']=flbl
             if tl and not tm:
                 tr2=tk.Frame(card,bg=CARD_BG);tr2.pack(pady=(4,2));card_data['tags']=tr2
@@ -802,7 +869,7 @@ class FloodGate(ctk.CTk):
     def _build_upload(self):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["UPLOAD"]=tab
         hdr=tk.Frame(tab,bg=BG_RED);hdr.pack(fill="x",padx=20,pady=(14,8))
-        tk.Label(hdr,text="UPLOAD QUEUE",font=("Helvetica Neue",14,"bold"),fg=WHITE,bg=BG_RED).pack(side="left")
+        tk.Label(hdr,text="UPLOAD QUEUE",font=self.fonts["title"],fg=WHITE,bg=BG_RED).pack(side="left")
         st=tk.Frame(tab,bg=BG_RED);st.pack(fill="x",padx=20,pady=(0,8))
         self.ig_lbl=tk.Label(st,text="IG: NOT PAIRED",font=("Courier New",7,"bold"),fg=GRAY,bg=BG_RED);self.ig_lbl.pack(side="left",padx=(0,14))
         HoverButton(st,text="PAIR IG",font=("Courier New",7,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=8,pady=1,command=lambda:[setattr(self.upload,'paired_ig',True),self.ig_lbl.config(text="IG: PAIRED",fg=UPLOAD_GREEN),messagebox.showinfo("Instagram","Paired!")]).pack(side="left",padx=2)
@@ -810,7 +877,7 @@ class FloodGate(ctk.CTk):
         HoverButton(st,text="PAIR TT",font=("Courier New",7,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=8,pady=1,command=lambda:[setattr(self.upload,'paired_tt',True),self.tt_lbl.config(text="TT: PAIRED",fg=UPLOAD_GREEN),messagebox.showinfo("TikTok","Paired!")]).pack(side="left",padx=2)
         self.ulb_frame=ctk.CTkScrollableFrame(tab,fg_color=DARK_RED)
         self.ulb_frame.pack(fill="both",expand=True,padx=20,pady=(6,6))
-        self.ulb=tk.Listbox(self.ulb_frame,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=("Courier New",8),bd=0,height=20)
+        self.ulb=tk.Listbox(self.ulb_frame,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=self.fonts["body"],bd=0,height=20)
         self.ulb.pack(fill="both",expand=True)
         br=tk.Frame(tab,bg=BG_RED);br.pack(fill="x",padx=20,pady=(0,14))
         HoverButton(br,text="REMOVE",font=("Courier New",8,"bold"),fg=BLACK,bg=ACCENT,bd=0,padx=10,pady=4,command=self._remove_draft).pack(side="left")
@@ -831,31 +898,31 @@ class FloodGate(ctk.CTk):
     def _slot(self,parent,key,meta):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
         card.pack(fill="x",pady=(0,6),ipady=2)
-        tk.Label(card,text=meta["label"],font=("Helvetica Neue",9,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
-        tk.Label(card,text=meta["hint"],font=("Courier New",7),fg="#E8DDD4",bg=CARD_BG).pack(pady=(0,4))
-        lb=tk.Listbox(card,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=("Courier New",8),height=3,bd=0,highlightthickness=0,activestyle="none")
+        tk.Label(card,text=meta["label"],font=self.fonts["subheading"],fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
+        tk.Label(card,text=meta["hint"],font=self.fonts["small"],fg="#E8DDD4",bg=CARD_BG).pack(pady=(0,4))
+        lb=tk.Listbox(card,bg=DARK_RED,fg=WHITE,selectbackground=WHITE,selectforeground=BLACK,font=self.fonts["body"],height=3,bd=0,highlightthickness=0,activestyle="none")
         lb.pack(fill="x",padx=12,pady=(0,4));self.listboxes[key]=lb
         lb.bind("<Delete>",lambda e,k=key:self._remove_selected(k))
         lb.bind("<BackSpace>",lambda e,k=key:self._remove_selected(k))
         br=tk.Frame(card,bg=CARD_BG);br.pack(pady=(0,6))
         HoverButton(br,text="ADD",font=("Courier New",8,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=10,pady=2,cursor="hand2",command=lambda k=key,m=meta:self._add_files(k,m)).pack(side="left",padx=2)
-        HoverButton(br,text="REMOVE",font=("Courier New",8),fg=WHITE,bg=DARK_RED,hover_bg="#7A0000",bd=0,padx=10,pady=2,cursor="hand2",command=lambda k=key:self._remove_selected(k)).pack(side="left",padx=2)
+        HoverButton(br,text="REMOVE",font=self.fonts["body"],fg=WHITE,bg=DARK_RED,hover_bg="#7A0000",bd=0,padx=10,pady=2,cursor="hand2",command=lambda k=key:self._remove_selected(k)).pack(side="left",padx=2)
 
     def _logo_card(self,parent):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
         card.pack(fill="x",pady=(0,6),ipady=2)
-        tk.Label(card,text=LOGO_SLOT["label"],font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
-        tk.Label(card,text=LOGO_SLOT["hint"],font=("Courier New",6),fg=GRAY,bg=CARD_BG).pack(pady=(0,4))
+        tk.Label(card,text=LOGO_SLOT["label"],font=self.fonts["heading"],fg=WHITE,bg=CARD_BG).pack(pady=(8,1))
+        tk.Label(card,text=LOGO_SLOT["hint"],font=self.fonts["tiny"],fg=GRAY,bg=CARD_BG).pack(pady=(0,4))
         self.logo_var=tk.StringVar()
-        tk.Entry(card,textvariable=self.logo_var,font=("Courier New",8),bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,justify="center").pack(fill="x",padx=16,ipady=3)
+        tk.Entry(card,textvariable=self.logo_var,font=self.fonts["body"],bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,justify="center").pack(fill="x",padx=16,ipady=3)
         HoverButton(card,text="SELECT LOGO",font=("Courier New",8,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=12,pady=3,cursor="hand2",command=self._add_logo).pack(pady=(4,8))
 
     def _settings_card(self,parent):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
         card.pack(fill="x",pady=(0,6),ipady=2)
-        tk.Label(card,text="SETTINGS",font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,4))
+        tk.Label(card,text="SETTINGS",font=self.fonts["heading"],fg=WHITE,bg=CARD_BG).pack(pady=(8,4))
         self.preview_var=tk.BooleanVar(value=self.config["settings"].get("preview_mode",True))
-        tk.Checkbutton(card,text="Preview Mode (1080p)",variable=self.preview_var,font=("Courier New",7),fg=WHITE,bg=CARD_BG,selectcolor=DARK_RED,activebackground=CARD_BG,activeforeground=WHITE,relief="flat",command=self._save_settings).pack(pady=(0,4))
+        tk.Checkbutton(card,text="Preview Mode (1080p)",variable=self.preview_var,font=self.fonts["small"],fg=WHITE,bg=CARD_BG,selectcolor=DARK_RED,activebackground=CARD_BG,activeforeground=WHITE,relief="flat",command=self._save_settings).pack(pady=(0,4))
         tk.Label(card,text="CAPTION FONT",font=("Courier New",7,"bold"),fg=GRAY,bg=CARD_BG).pack(pady=(6,0))
         cf=self.config.get("caption_font","Impact")
         if cf not in self.fonts_ok: cf="Impact"
@@ -863,13 +930,13 @@ class FloodGate(ctk.CTk):
         self.font_preview.pack(pady=(2,4),ipadx=20,ipady=2)
         self.cap_font_var=tk.StringVar(value=cf)
         fd=tk.OptionMenu(card,self.cap_font_var,cf,*self.fonts_ok,command=lambda c:[self.cap_font_var.set(c),self.config.update({"caption_font":c}),self._save_config(),self.font_preview.config(font=(c,14))])
-        fd.config(font=("Courier New",8),bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=1,highlightcolor=BORDER,highlightbackground=CARD_BG,width=28)
-        fd["menu"].config(font=("Courier New",8),bg=CARD_BG,fg=WHITE,activebackground=DARK_RED,bd=0)
+        fd.config(font=self.fonts["body"],bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=1,highlightcolor=BORDER,highlightbackground=CARD_BG,width=28)
+        fd["menu"].config(font=self.fonts["body"],bg=CARD_BG,fg=WHITE,activebackground=DARK_RED,bd=0)
         fd.pack(fill="x",padx=8,pady=(2,6))
         caps=self.config.get("captions",{})
         for act,vn,lb in [("act_a","cap_a_var","ACT A"),("act_b","cap_b_var","ACT B")]:
             tk.Label(card,text=lb,font=("Courier New",7,"bold"),fg=GRAY,bg=CARD_BG).pack(pady=(3,1))
-            e=tk.Entry(card,font=("Courier New",8),bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,highlightthickness=1,highlightcolor=BORDER,highlightbackground=CARD_BG,justify="center")
+            e=tk.Entry(card,font=self.fonts["body"],bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,highlightthickness=1,highlightcolor=BORDER,highlightbackground=CARD_BG,justify="center")
             e.pack(fill="x",padx=16,ipady=2)
             sv=tk.StringVar(value=caps.get(act,""));e.configure(textvariable=sv);setattr(self,vn,sv)
         HoverButton(card,text="SAVE",font=("Courier New",8,"bold"),fg=BLACK,bg=WHITE,bd=0,padx=12,pady=3,command=self._save_settings).pack(pady=(8,8))
@@ -877,7 +944,7 @@ class FloodGate(ctk.CTk):
     def _render_card(self,parent):
         card=tk.Frame(parent,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER)
         card.pack(fill="x",pady=(0,6),ipady=2)
-        tk.Label(card,text="RENDER",font=("Helvetica Neue",8,"bold"),fg=WHITE,bg=CARD_BG).pack(pady=(8,2))
+        tk.Label(card,text="RENDER",font=self.fonts["heading"],fg=WHITE,bg=CARD_BG).pack(pady=(8,2))
         self.render_count_var=tk.IntVar(value=self.config.get("num_renders",10))
         self.count_label=tk.Label(card,text=str(self.render_count_var.get()),font=("Helvetica Neue",28,"bold"),fg=WHITE,bg=CARD_BG)
         self.count_label.pack()
@@ -929,6 +996,10 @@ class FloodGate(ctk.CTk):
             if str(dest)!=str(src): shutil.copy2(str(src),str(dest))
             rel=str(dest.relative_to(BASE_DIR)).replace("\\","/")
         self.config["logo"]=rel;self._save_config();self.after(0,lambda:self.logo_var.set(rel));self._set_status(f"Logo: {src.name}");self._busy=False
+    def _persist_templates(self):
+        self.config["templates"] = self.templates
+        self._save_config()
+
     def _save_settings(self):
         self.config["settings"]["preview_mode"]=self.preview_var.get()
         self.config["captions"]["act_a"]=self.cap_a_var.get()
