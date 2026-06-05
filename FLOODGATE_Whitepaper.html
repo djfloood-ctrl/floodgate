@@ -1,133 +1,581 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLOODGATE — Whitepaper</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #8B1A1A; color: #F0E8E0; font-family: 'Helvetica Neue', 'Segoe UI', sans-serif; line-height: 1.7; }
-        .container { max-width: 960px; margin: 0 auto; padding: 60px 40px; }
-        .logo { font-size: 48px; font-weight: 900; letter-spacing: -2px; margin-bottom: 4px; }
-        .tagline { font-family: 'Courier New', monospace; color: #C8B0B0; font-size: 11px; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 40px; }
-        .divider { height: 1px; background: #C84040; margin: 50px 0; }
-        h1 { font-size: 36px; font-weight: 900; margin-bottom: 20px; }
-        h2 { font-size: 22px; font-weight: 700; margin: 40px 0 16px; color: #FF4444; }
-        h3 { font-size: 16px; font-weight: 700; margin: 24px 0 10px; }
-        p { margin-bottom: 16px; color: #E8DDD4; }
-        ul { margin: 12px 0 20px 20px; }
-        li { margin-bottom: 8px; color: #E8DDD4; }
-        blockquote { background: #6B1010; border-left: 4px solid #FF4444; padding: 20px 24px; margin: 20px 0; border-radius: 0 8px 8px 0; font-style: italic; }
-        blockquote strong { display: block; margin-top: 12px; font-style: normal; color: #C8B0B0; font-size: 13px; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
-        th { background: #6B1010; padding: 12px 16px; text-align: left; font-family: 'Courier New', monospace; color: #FF4444; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-        td { padding: 10px 16px; border-bottom: 1px solid #9E2020; font-family: 'Courier New', monospace; font-size: 12px; }
-        tr:hover td { background: #9E2020; }
-        code { background: #6B1010; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-        .footer { margin-top: 60px; color: #C8B0B0; font-family: 'Courier New', monospace; font-size: 11px; text-align: center; }
-        @media (max-width: 768px) { .container { padding: 30px 20px; } .logo { font-size: 32px; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLOODGATE — Official Whitepaper v2.2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Bebas+Neue&display=swap');
+
+  :root {
+    --red: #8B1A1A;
+    --dark-red: #6B1010;
+    --card: #A52222;
+    --border: #C84040;
+    --white: #F0E8E0;
+    --gray: #C8B0B0;
+    --accent: #FF4444;
+    --gold: #F1C40F;
+    --green: #2ECC71;
+    --blue: #3498DB;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--dark-red);
+    color: var(--white);
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 60px 40px;
+  }
+
+  /* HEADER */
+  .header {
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 32px;
+    margin-bottom: 48px;
+    text-align: center;
+  }
+
+  .logo-title {
+    font-family: 'Bebas Neue', 'Impact', sans-serif;
+    font-size: 96px;
+    letter-spacing: 12px;
+    color: var(--white);
+    line-height: 1;
+    text-shadow: 0 0 40px rgba(255,68,68,0.4);
+  }
+
+  .tagline {
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  .version-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #1A1A1A;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    margin-top: 16px;
+  }
+
+  /* SECTIONS */
+  h1 {
+    font-family: 'Bebas Neue', 'Impact', sans-serif;
+    font-size: 42px;
+    letter-spacing: 4px;
+    color: var(--white);
+    margin: 48px 0 16px;
+    border-left: 4px solid var(--accent);
+    padding-left: 16px;
+  }
+
+  h2 {
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin: 32px 0 10px;
+  }
+
+  h3 {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin: 20px 0 8px;
+  }
+
+  p {
+    color: var(--gray);
+    margin-bottom: 14px;
+    max-width: 720px;
+  }
+
+  p strong {
+    color: var(--white);
+  }
+
+  /* CARD BLOCKS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin: 16px 0;
+  }
+
+  .card-title {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* FEATURE GRID */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .feature-item {
+    background: var(--dark-red);
+    border: 1px solid var(--border);
+    padding: 14px 18px;
+  }
+
+  .feature-item .feat-label {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .feature-item p {
+    font-size: 12px;
+    margin: 0;
+  }
+
+  /* INDUSTRY TABLE */
+  .industry-grid {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    border: 1px solid var(--border);
+    margin: 16px 0;
+  }
+
+  .industry-row {
+    display: contents;
+  }
+
+  .industry-row .ind-label {
+    background: var(--dark-red);
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: 12px 16px;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+  }
+
+  .industry-row .ind-desc {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--gray);
+  }
+
+  .industry-row:last-child .ind-label,
+  .industry-row:last-child .ind-desc {
+    border-bottom: none;
+  }
+
+  /* COMMIT TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 11px;
+  }
+
+  th {
+    background: var(--dark-red);
+    color: var(--accent);
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(200,64,64,0.3);
+    color: var(--gray);
+    vertical-align: top;
+  }
+
+  td:first-child { color: var(--white); white-space: nowrap; }
+  td code {
+    background: var(--dark-red);
+    color: var(--accent);
+    padding: 1px 6px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 10px;
+  }
+
+  tr:hover td { background: rgba(165,34,34,0.3); }
+
+  /* QUOTE BLOCKS */
+  .praise-block {
+    border-left: 3px solid var(--gold);
+    padding: 14px 20px;
+    margin: 12px 0;
+    background: rgba(0,0,0,0.15);
+  }
+
+  .praise-block blockquote {
+    color: var(--gray);
+    font-size: 12px;
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+
+  .praise-block cite {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+    font-style: normal;
+  }
+
+  /* SPEC BADGES */
+  .spec-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+  }
+
+  .spec-badge {
+    background: var(--dark-red);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--white);
+    text-transform: uppercase;
+  }
+
+  .spec-badge span {
+    color: var(--accent);
+  }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+  }
+
+  /* FOOTER */
+  .footer {
+    border-top: 3px solid var(--accent);
+    margin-top: 60px;
+    padding-top: 24px;
+    text-align: center;
+  }
+
+  .footer p {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--gray);
+    text-align: center;
+    max-width: none;
+  }
+
+  .footer .flood-sign {
+    font-family: 'Bebas Neue', 'Impact', sans-serif;
+    font-size: 28px;
+    letter-spacing: 6px;
+    color: var(--accent);
+    margin-top: 10px;
+  }
+
+  /* FLOOD QUOTE — the personal voice callout */
+  .flood-voice {
+    background: var(--accent);
+    color: #1A1A1A;
+    padding: 18px 24px;
+    margin: 24px 0;
+    font-weight: bold;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .flood-voice::before {
+    content: "DJ FLOOD — ";
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 6px;
+    opacity: 0.7;
+  }
+
+  @media print {
+    body { background: white; color: black; }
+    .logo-title { color: black; text-shadow: none; }
+    h1 { color: black; }
+    .card { background: #f5f5f5; }
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">FLOODGATE</div>
-        <div class="tagline">Short-Form Content Engine • Whitepaper v2.2</div>
+<div class="page">
 
-        <div class="divider"></div>
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-title">FLOODGATE</div>
+    <div class="tagline">Short-Form Content Generation Engine &mdash; Built for the Algorithm</div>
+    <div class="version-badge">v2.2 &mdash; Production Build</div>
+  </div>
 
-        <h1>What Is FLOODGATE?</h1>
-        <p>FLOODGATE is a short-form content generation engine that transforms raw video, audio, and voiceover assets into randomized, formatted, captioned clips optimized for Instagram Reels, TikTok, YouTube Shorts, and more. It combines a YEEZY-inspired brutalist design aesthetic with production-grade FFmpeg rendering to solve the fundamental problem facing every creator: <strong>volume.</strong></p>
-        <p>The algorithm demands constant output. FLOODGATE turns one batch of source material into hundreds of unique clips — each with different timestamps, different music pairings, random voiceover combinations. No two renders are identical. What would take hours of manual editing takes minutes of automated rendering.</p>
+  <!-- WHAT IS FLOODGATE -->
+  <h1>What Is FLOODGATE?</h1>
 
-        <h2>Core Capabilities</h2>
-        <ul>
-            <li><strong>Contrast Engine</strong> — Sad vs. Happy clip pairing with music beds and AI voiceovers</li>
-            <li><strong>Format Presets</strong> — Instagram Reel (1080×1920), TikTok, YouTube Shorts, Widescreen (16:9), Cinematic (21:9)</li>
-            <li><strong>Asset Management</strong> — Drag-and-drop video, audio, and voiceover slots with file size tracking</li>
-            <li><strong>Smart Browse</strong> — Gallery view with favorites, tags, folders, search, and sort-by-date/views/name</li>
-            <li><strong>Trash System</strong> — Instant trash with undo, permanent delete with confirmation</li>
-            <li><strong>Live Rendering</strong> — Browse auto-updates during render batches, polling stops when complete</li>
-            <li><strong>Project Bins</strong> — Save/load artist profiles with independent asset pools and settings</li>
-            <li><strong>Git Version Control</strong> — Every feature checkpointed, fully revertible</li>
-        </ul>
+  <div class="flood-voice">
+    The algorithm doesn't care how tired you are. It wants content today, tomorrow, and the day after that. FLOODGATE is my answer to that. One session of footage turns into hundreds of clips &mdash; automated, randomized, ready to post. I built this because I needed it, and now it works.
+  </div>
 
-        <h2>Business Applications</h2>
-        <h3>Music Industry</h3>
-        <p>Artists and DJs can generate hundreds of promotional clips from a single music video, live set recording, or studio session. Each clip features different sections of the track, different visual moments, and branded captions — ready for Reels, TikTok, and Stories.</p>
-        <h3>Content Agencies</h3>
-        <p>Scale short-form production from dozens to thousands of clips per client per month. Template-based rendering ensures brand consistency across all output. The browse and tag system enables rapid content library management.</p>
-        <h3>Podcast Networks</h3>
-        <p>Extract highlight clips from long-form episodes automatically. Pair quote-worthy moments with branded visuals and captions. Feed the algorithm without manual editing.</p>
-        <h3>Sports Media</h3>
-        <p>Clip goal reactions, highlight plays, and post-game moments in batches. Multiple format outputs from a single source file.</p>
-        <h3>Comedy & Entertainment</h3>
-        <p>Turn specials and sets into hundreds of shareable clips. Random extraction ensures each clip feels fresh and authentic.</p>
+  <p>
+    FLOODGATE is a <strong>short-form content generation engine</strong> that transforms raw video, audio, and AI voiceover assets into randomized, formatted, captioned clips &mdash; optimized for Instagram Reels, TikTok, YouTube Shorts, and every major platform in between.
+  </p>
+  <p>
+    It combines a YEEZY-inspired brutalist design aesthetic with production-grade FFmpeg rendering to solve the fundamental problem facing every creator: <strong>volume.</strong> The algorithm demands constant output. FLOODGATE turns one batch of source material into hundreds of unique clips &mdash; each with different timestamps, different music pairings, random voiceover combinations. No two renders are identical. What would take hours of manual editing takes minutes of automated rendering.
+  </p>
 
-        <div class="divider"></div>
+  <div class="spec-row">
+    <div class="spec-badge">Engine <span>FFmpeg</span></div>
+    <div class="spec-badge">UI <span>CustomTkinter</span></div>
+    <div class="spec-badge">Language <span>Python 3</span></div>
+    <div class="spec-badge">Platform <span>Windows</span></div>
+    <div class="spec-badge">Version <span>2.2</span></div>
+  </div>
 
-        <h2>Industry Praise</h2>
-        <blockquote>
-            "FLOODGATE is what happens when you combine the brutalist minimalism of YEEZY with the raw utility of ffmpeg. It doesn't ask permission. It just renders. Five stars."
-            <strong>— Forbes (unofficial, but they'd say this)</strong>
-        </blockquote>
-        <blockquote>
-            "We've analyzed the codebase. The in-place filtering architecture alone represents a paradigm shift in how Tkinter applications should handle state management. Also the red is very red."
-            <strong>— MIT Technology Review (spiritually)</strong>
-        </blockquote>
-        <blockquote>
-            "I showed FLOODGATE to my board. They asked if it was built by a team of engineers. I said no, it was built by one person in Notepad with git commits. They didn't believe me."
-            <strong>— A16Z Partner (hypothetically)</strong>
-        </blockquote>
-        <blockquote>
-            "The instant star toggle alone — no page reload, no flicker, just pure DOM manipulation energy in a Python GUI — deserves a Webby. Unfortunately those are for websites. But if they had a category for 'most elegant tkinter hack,' FLOODGATE sweeps."
-            <strong>— The Verge (in an alternate timeline)</strong>
-        </blockquote>
-        <blockquote>
-            "We tried to build something like this internally. It took our team six months and still crashed on long filenames. FLOODGATE handles 200MB video files, corrupt H.264 frames, and emoji in trash buttons without breaking a sweat. Respect."
-            <strong>— Senior Engineer, Adobe Premiere Team (we assume)</strong>
-        </blockquote>
-        <blockquote>
-            "The render-then-poll architecture where FLOODGATE watches its own output directory for new files and updates the gallery in real-time? That's not a feature. That's a flex."
-            <strong>— Hacker News Top Comment (predicted)</strong>
-        </blockquote>
-        <blockquote>
-            "I don't know what a 'git commit' is but this program made me 47 TikToks while I was eating cereal. 10/10."
-            <strong>— Actual User (probably you)</strong>
-        </blockquote>
+  <hr class="divider">
 
-        <div class="divider"></div>
+  <!-- CORE CAPABILITIES -->
+  <h1>Core Capabilities</h1>
 
-        <h2>Commit History</h2>
-        <table>
-            <thead>
-                <tr><th>Date</th><th>Commit</th><th>Description</th></tr>
-            </thead>
-            <tbody>
-                <tr><td>2026-05-12</td><td><code>246e9d1</code></td><td>5 clean formats with Custom option, popup dialogs for W/H/FPS, render reads custom values</td></tr>
-                <tr><td>2026-05-12</td><td><code>2873dda</code></td><td>Format presets cleaned up: 4 formats, no duplicates, config default fixed</td></tr>
-                <tr><td>2026-05-12</td><td><code>8730410</code></td><td>Momentum scroll: 2x base speed, accelerates to 4x, decelerates, unified across all tabs and listboxes</td></tr>
-                <tr><td>2026-05-12</td><td><code>2a99158</code></td><td>Larger subtitles, lighter color, descriptive content type hints</td></tr>
-                <tr><td>2026-05-12</td><td><code>11e72e6</code></td><td>Equal 50/50 column widths, even padding throughout UI, filename truncation</td></tr>
-                <tr><td>2026-05-12</td><td><code>5f2436c</code></td><td>Equal 50/50 column widths, even padding throughout UI, filename truncation</td></tr>
-                <tr><td>2026-05-12</td><td><code>c790e45</code></td><td>Whitepaper, changelog, and changelog generator script</td></tr>
-                <tr><td>2026-05-12</td><td><code>b3d5ed5</code></td><td>Global mousewheel scrolling on both tabs, CTkScrollableFrame on browse</td></tr>
-                <tr><td>2026-05-12</td><td><code>dc5d266</code></td><td>Gallery layout: 4 browse cards per row, fixed 180x210, asset panels with side padding, gitignore cleanup</td></tr>
-                <tr><td>2026-05-12</td><td><code>69446fa</code></td><td>4 browse cards per row, fixed 180x210 size, asset panels with side padding</td></tr>
-                <tr><td>2026-05-12</td><td><code>b6b947d</code></td><td>Scrolling on all tabs - assets, browse sidebar, upload queue</td></tr>
-                <tr><td>2026-05-11</td><td><code>050a7f6</code></td><td>In-place browse filtering - only refresh button rebuilds, folders/tags/search filter instantly</td></tr>
-                <tr><td>2026-05-11</td><td><code>940b412</code></td><td>Instant star toggle + favorites folder refresh on un-star</td></tr>
-                <tr><td>2026-05-11</td><td><code>01f90f2</code></td><td>Instant star toggle - no full page reload on favorites</td></tr>
-                <tr><td>2026-05-11</td><td><code>30d3ac2</code></td><td>Auto-refresh browse during render, live polling, favorites fix, instant trash, trash icon, views label</td></tr>
-                <tr><td>2026-05-11</td><td><code>1dc7f7a</code></td><td>v to views</td></tr>
-                <tr><td>2026-05-11</td><td><code>201a31e</code></td><td>Working base - customtkinter + instant trash + trash icon</td></tr>
-                <tr><td>2026-05-11</td><td><code>c76f599</code></td><td>Working base - CustomTkinter converted</td></tr>
+  <p>FLOODGATE is a modular workspace. Every component is independent, configurable, and built to be fast. Here's what's under the hood:</p>
 
-            </tbody>
-        </table>
-
-        <div class="divider"></div>
-
-        <p class="footer">FLOODGATE v2.2 — Built with Python, CustomTkinter, FFmpeg, and an unreasonable amount of git commits.</p>
+  <div class="feature-grid">
+    <div class="feature-item">
+      <span class="feat-label">Contrast Engine</span>
+      <p>Dual-act clip pairing &mdash; Sad (Act A) vs. Energy (Act B) &mdash; with independent music beds and AI voiceover channels. The signature FLOODGATE format that makes every render feel intentional.</p>
     </div>
+    <div class="feature-item">
+      <span class="feat-label">Format Presets</span>
+      <p>12 built-in presets covering every major platform: Reel/TikTok (1080&times;1920), YouTube Shorts, Instagram Story, Snapchat, Square (1:1), LinkedIn, Widescreen (16:9), Twitter/X, Facebook, Cinematic (21:9), Pinterest (2:3), and fully Custom dimensions with user-defined width, height, and FPS.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Template System</span>
+      <p>Switch between render templates &mdash; SAD CLIP / HAPPY CLIP for contrast content, LONGFORM CLIPS for podcasts and extended source material. Custom templates can be created, saved, and archived. Default templates are protected.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Asset Management</span>
+      <p>Six dedicated asset slots (Act A video, Act B video, Act A music, Act B music, voiceovers, longform source) plus a separate logo slot. Files under 200MB are auto-copied to organized subfolders. Large files reference in place. Delete and backspace remove selections instantly.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Smart Browse Gallery</span>
+      <p>4-card-per-row gallery view of rendered output. Sort by date (newest first), favorites first, or name A-Z. Filter by folder or tag with zero page reloads &mdash; all filtering happens in-place on existing cards. Live search filters instantly as you type.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Favorites & Tags</span>
+      <p>Star any clip to mark it as a favorite &mdash; toggles instantly with no UI rebuild. Add color-coded tags from a 6-color palette. Up to 3 tags visible per card. Tags and favorites survive sessions via persistent JSON metadata.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Folder System</span>
+      <p>Organize clips into custom folders. Create new folders on the fly from the sidebar. Move clips between folders without leaving the browse view. Folder labels update in-place on the card immediately after assignment.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Trash System</span>
+      <p>Instant trash with one click &mdash; the card vanishes from the gallery immediately with no delay. Restore clips back to output with one click. Permanent delete requires confirmation. Empty Trash wipes the entire trash directory at once.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Live Render Polling</span>
+      <p>Browse gallery auto-updates while the remixer is rendering in a separate terminal. Polls the output directory every 1.5 seconds and adds new clips as they appear. Auto-stops polling when the render completes and cleans up the signal file.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Project Bins</span>
+      <p>Save and load full artist profiles with independent asset pools, caption settings, format presets, render counts, and template selections. Switch projects from the top bar without losing any configuration. Default project is always available.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Render Control</span>
+      <p>Slider + quick-select buttons (5, 10, 25, 50, 100) to set render count. Preview Mode option. Ctrl+R keyboard shortcut launches the remixer from anywhere in the app. Renders run in a separate terminal window so the UI stays live during processing.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Upload Queue</span>
+      <p>Queue rendered clips for Instagram and TikTok directly from the browse view. Attach captions per clip. Pair platform accounts once. Upload all queued drafts in one action. Remove individual drafts from the queue before posting.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- TECHNICAL ARCHITECTURE -->
+  <h1>Technical Architecture</h1>
+
+  <h2>Rendering Pipeline</h2>
+  <p>
+    FLOODGATE separates the UI process from the render process entirely. When you hit RUN, it writes a <code>_run_remixer.bat</code> script and launches it in a new terminal window via <code>subprocess.Popen</code> with <code>CREATE_NEW_CONSOLE</code>. This means the UI never freezes during a render, no matter how many clips are queued. When the render completes, the bat script drops a <code>_render_complete.txt</code> signal file that the live polling loop detects &mdash; polling stops, the gallery refreshes, and the signal file is cleaned up automatically.
+  </p>
+
+  <h2>In-Place Filtering Architecture</h2>
+  <p>
+    The browse gallery does not rebuild from scratch on every filter action. Each card widget is tracked in a <code>_card_widgets</code> dictionary keyed by filename. Folder changes, tag filters, and search queries show/hide existing cards using <code>pack()</code> and <code>pack_forget()</code> rather than destroying and recreating the DOM. This means filtering is instant regardless of library size. A full rebuild only happens when explicitly requested via the refresh button or a sort change.
+  </p>
+
+  <h2>Metadata & Persistence</h2>
+  <p>
+    All clip metadata (favorites, tags, folders, view counts) is stored in <code>clip_meta.json</code>. On startup, the <code>ClipMeta</code> class scans both the output and trash directories and migrates any untracked files into the metadata store automatically. Project configurations are stored as individual <code>project.json</code> files inside <code>projects/[name]/</code> directories. Global settings persist to <code>config.json</code> and are written on every change.
+  </p>
+
+  <h2>Momentum Scrolling</h2>
+  <p>
+    A custom global scroll handler tracks time between scroll events and builds momentum on consecutive fast scrolls (up to 4x multiplier). Momentum decays when scroll events slow down. The handler correctly routes scroll events to whichever scrollable frame is currently visible &mdash; the browse gallery, the assets panel, or individual listboxes.
+  </p>
+
+  <h2>File Handling</h2>
+  <p>
+    Files under 200MB are copied to their designated asset subfolders on import. Files over 200MB are referenced by absolute path to avoid unnecessary disk duplication. All paths are stored with forward slashes for cross-platform consistency. The logo slot supports PNG and JPG with a separate preview-ready asset folder.
+  </p>
+
+  <hr class="divider">
+
+  <!-- BUSINESS APPLICATIONS -->
+  <h1>Business Applications</h1>
+
+  <div class="flood-voice">
+    This isn't just for DJs. Anyone who creates content at scale and is tired of doing it manually &mdash; this is the tool. I built it for my workflow but I made it general enough that it works for anyone who needs volume.
+  </div>
+
+  <div class="industry-grid">
+    <div class="industry-row">
+      <div class="ind-label">Music &amp; DJs</div>
+      <div class="ind-desc">Generate hundreds of promotional clips from a single music video, live set, or studio session. Each clip features a different section of the track, different visual moments, and branded captions ready for Reels, TikTok, and Stories. The contrast engine was designed for exactly this &mdash; Act A builds tension, Act B delivers the drop.</div>
+    </div>
+    <div class="industry-row">
+      <div class="ind-label">Content Agencies</div>
+      <div class="ind-desc">Scale short-form production from dozens to thousands of clips per client per month. Template-based rendering ensures brand consistency across all output. Project Bins let you maintain fully isolated configurations for every client with one-click switching.</div>
+    </div>
+    <div class="industry-row">
+      <div class="ind-label">Podcasts</div>
+      <div class="ind-desc">Extract highlight clips from long-form episodes automatically via the Longform Clips template. Pair quote-worthy moments with branded visuals and AI voiceovers. Feed the algorithm without touching a timeline.</div>
+    </div>
+    <div class="industry-row">
+      <div class="ind-label">Sports Media</div>
+      <div class="ind-desc">Clip goal reactions, highlight plays, and post-game moments in batches. Output to every required format (vertical, square, widescreen) from a single source file in one render pass.</div>
+    </div>
+    <div class="industry-row">
+      <div class="ind-label">Comedy &amp; Entertainment</div>
+      <div class="ind-desc">Turn specials, sets, and sketch packages into hundreds of shareable clips. Random timestamp extraction ensures each clip feels fresh and authentic rather than a predictable highlight reel.</div>
+    </div>
+    <div class="industry-row">
+      <div class="ind-label">Real Estate &amp; Commercial</div>
+      <div class="ind-desc">Generate property walkthrough clips, product showcases, and testimonial snippets in bulk with consistent branding, logo watermarks, and captions locked per project.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- INDUSTRY PRAISE -->
+  <h1>Industry Praise</h1>
+  <p style="font-size:11px; color: var(--gray); margin-bottom: 20px;">* All quotes are aspirational. The sentiment is accurate. The attribution is spiritually correct.</p>
+
+  <div class="praise-block">
+    <blockquote>"FLOODGATE is what happens when you combine the brutalist minimalism of YEEZY with the raw utility of FFmpeg. It doesn't ask permission. It just renders. Five stars."</blockquote>
+    <cite>Forbes &mdash; (unofficial, but they'd say this)</cite>
+  </div>
+
+  <div class="praise-block">
+    <blockquote>"We analyzed the codebase. The in-place filtering architecture alone &mdash; where folder changes, tag filters, and search all operate on live widgets without a single DOM rebuild &mdash; represents a paradigm shift in how Python GUI applications should handle state management. Also the red is very red."</blockquote>
+    <cite>MIT Technology Review &mdash; (spiritually)</cite>
+  </div>
+
+  <div class="praise-block">
+    <blockquote>"I showed FLOODGATE to my board. They asked if it was built by a team of engineers. I said no, one person, Python, git commits. They didn't believe me."</blockquote>
+    <cite>A16Z Partner &mdash; (hypothetically)</cite>
+  </div>
+
+  <div class="praise-block">
+    <blockquote>"The instant star toggle &mdash; no page reload, no flicker, just a direct widget config call updating the label in place &mdash; deserves recognition. If there were a category for 'most elegant Python GUI interaction,' FLOODGATE sweeps it."</blockquote>
+    <cite>The Verge &mdash; (alternate timeline)</cite>
+  </div>
+
+  <div class="praise-block">
+    <blockquote>"We tried to build something like this internally. It took our team six months and still crashed on long filenames. FLOODGATE handles 200MB video files, corrupt H.264 frames, and emoji in trash buttons without breaking a sweat. Respect."</blockquote>
+    <cite>Senior Engineer, Adobe Premiere Team &mdash; (we assume)</cite>
+  </div>
+
+  <div class="praise-block">
+    <blockquote>"The render-then-poll architecture &mdash; where FLOODGATE watches its own output directory every 1.5 seconds, adds new cards as they appear, and auto-stops when it detects the completion signal &mdash; is not a feature. That's a flex."</blockquote>
+    <cite>Hacker News Top Comment &mdash; (predicted)</cite>
+  </div>
+
+  <div class="praise-block">
+    <blockquote>"I don't know what a git commit is but this program made me 47 TikToks while I was eating cereal. 10/10."</blockquote>
+    <cite>Actual User &mdash; (probably you)</cite>
+  </div>
+
+  <hr class="divider">
+
+  <!-- COMMIT HISTORY -->
+  <h1>Build History</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Commit</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>2026-06-04</td><td><code>cleanup</code></td><td>Removed build artifacts, patch scripts, and installer files. Repo cleaned to production state.</td></tr>
+      <tr><td>2026-05-12</td><td><code>b3d5ed5</code></td><td>Global mousewheel momentum scrolling on all tabs. CTkScrollableFrame on browse gallery.</td></tr>
+      <tr><td>2026-05-12</td><td><code>dc5d266</code></td><td>Gallery layout locked to 4 browse cards per row at fixed 180&times;210. Asset panels with side padding. Gitignore cleanup.</td></tr>
+      <tr><td>2026-05-12</td><td><code>69446fa</code></td><td>4-card-per-row enforcement. Fixed card dimensions for consistent gallery grid.</td></tr>
+      <tr><td>2026-05-12</td><td><code>b6b947d</code></td><td>Scrolling enabled on all tabs &mdash; assets panel, browse sidebar, upload queue.</td></tr>
+      <tr><td>2026-05-11</td><td><code>050a7f6</code></td><td>In-place browse filtering introduced. Only the refresh button triggers a full rebuild. Folder, tag, and search filters operate instantly on live widgets.</td></tr>
+      <tr><td>2026-05-11</td><td><code>940b412</code></td><td>Instant star toggle. Favorites folder correctly refreshes when a clip is un-starred.</td></tr>
+      <tr><td>2026-05-11</td><td><code>01f90f2</code></td><td>Star toggle refactored to direct widget config call &mdash; no full page reload on favorites interaction.</td></tr>
+      <tr><td>2026-05-11</td><td><code>30d3ac2</code></td><td>Live render polling introduced. Browse auto-refreshes during active render. Instant trash, trash icon, views label added.</td></tr>
+      <tr><td>2026-05-11</td><td><code>1dc7f7a</code></td><td>Views label shorthand updated.</td></tr>
+      <tr><td>2026-05-11</td><td><code>201a31e</code></td><td>Working base established. CustomTkinter UI, instant trash, trash icon operational.</td></tr>
+      <tr><td>2026-05-11</td><td><code>c76f599</code></td><td>Initial CustomTkinter conversion from standard tkinter. Full UI framework migration.</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="divider">
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>FLOODGATE v2.2 &mdash; Built with Python, CustomTkinter, FFmpeg, and an unreasonable amount of git commits.</p>
+    <p style="margin-top: 8px;">Open Source &mdash; github.com/djfloood-ctrl/floodgate</p>
+    <div class="flood-sign">DJ FLOOD</div>
+    <p style="margin-top: 12px; font-size: 9px; letter-spacing: 1px;">The algorithm is a river. FLOODGATE is the dam.</p>
+  </div>
+
+</div>
 </body>
 </html>
