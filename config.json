@@ -1,8 +1,8 @@
 {
   "act_a_videos": [
     "assets/act_a/130 Hogs Down in 8 Minutes Texas Thermal Hog Hunting.mp4",
-    "assets/act_a/5442785-hd_1920_1080_25fps.mp4",
     "assets/act_a/HOG MASSACRE_ HUNTING WBELT FED MACHINEGUN(1).mp4",
+    "assets/act_a/HOG MASSACRE_ HUNTING WBELT FED MACHINEGUN.mp4",
     "assets/act_a/Slaughtering pigs in a humane way.mp4",
     "assets/act_a/World Record for Hogs Eliminated in Less Than 30 Seconds.mp4"
   ],
@@ -12,6 +12,7 @@
     "assets/act_b/20240101_001626B.mp4",
     "C:/FloodGate/assets/act_b/floodtacular set 010.mp4",
     "assets/act_b/omm algo.1.mov",
+    "assets/act_b/ScreenRecording_05-13-2026 18-20-39_1.mov",
     "assets/act_b/SHOW GOT RAIDED.mp4",
     "assets/act_b/TDMovieOut114smyna111.0.mov",
     "assets/act_b/TDMovieOut114smyna118.0.mov",
@@ -24,6 +25,7 @@
     "assets/music/sad/Winter Morning Ambience Sound Effect  Copyright Free Nature Sounds.mp3"
   ],
   "act_b_music": [
+    "C:/FloodGate/assets/music/heat/001.wav",
     "assets/music/heat/beastboy remix 1.mp3",
     "assets/music/heat/BIDGAF - mirorojo.mp3",
     "assets/music/heat/bippin - miro rojo (MIXED v2) prod. jbfko.mp3",
@@ -63,26 +65,39 @@
   ],
   "logo": "assets/logo/TRANSPARENT LOGO.png",
   "outro_duration": 1.5,
-  "num_renders": 1,
+  "num_renders": 5,
   "captions": {
     "act_a": "When I'm not listening to DJ FLOOD",
-    "act_b": "When I'm listening to DJ FLOOD"
+    "act_b": "When I;m digging in my butt"
   },
   "settings": {
     "preview_mode": true,
     "preview_resolution": "1920x1080",
     "music_volume": 0.35,
     "output_dir": "output",
-    "num_renders": 1,
-    "caption_font": "Consolas",
+    "num_renders": 5,
+    "caption_font": "Impact",
     "format": "Widescreen (16:9)",
-    "clip_length": 300,
+    "clip_length": 2,
     "template": "SAD CLIP / HAPPY CLIP",
     "longform_mode": "Movies",
     "target_w": 1920,
     "target_h": 1080,
     "target_fps": 30
   },
-  "caption_font": "Consolas",
-  "longform_source": []
+  "caption_font": "Impact",
+  "longform_source": [],
+  "templates": {
+    "SAD CLIP / HAPPY CLIP": [
+      "act_a_videos",
+      "act_b_videos",
+      "act_a_music",
+      "act_b_music",
+      "voiceover_clips"
+    ],
+    "LONGFORM CLIPS": [
+      "longform_source",
+      "voiceover_clips"
+    ]
+  }
 }

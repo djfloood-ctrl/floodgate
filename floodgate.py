@@ -498,6 +498,42 @@ class FloodGate(ctk.CTk):
                 menu.add_command(label=k, command=lambda v=v, k=k: (self.len_var.set(v), self._save_config()))
             self._set_status(f"Removed: {to_remove}")
 
+    def _save_template(self):
+        name = simpledialog.askstring("Add Template", "Template name:")
+        if not name: return
+        if name in self.templates: messagebox.showinfo("Exists", "Already exists."); return
+        self.templates[name] = ["act_a_videos","act_b_videos","act_a_music","act_b_music","voiceover_clips"]
+        self._rebuild_template_menu()
+        self.template_var.set(name)
+        self._persist_templates()
+        self._set_status(f"Added: {name}")
+
+    def _remove_template_popup(self):
+        name = self.template_var.get()
+        if name in ["SAD CLIP / HAPPY CLIP", "LONGFORM CLIPS"]: messagebox.showinfo("Protected", "Cannot remove defaults."); return
+        p = tk.Toplevel(self); p.title("Remove"); p.configure(bg=DARK_RED)
+        p.geometry("340x180"); p.resizable(False, False)
+        p.transient(self); p.grab_set()
+        p.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() - 340) // 2
+        y = self.winfo_y() + (self.winfo_height() - 180) // 2
+        p.geometry(f"+{x}+{y}")
+        tk.Label(p, text="REMOVE TEMPLATE", font=("Consolas", 12, "bold"), fg=WHITE, bg=DARK_RED).pack(pady=(16,8))
+        tk.Label(p, text=name, font=("Consolas", 10), fg=ACCENT, bg=DARK_RED).pack()
+        bf = tk.Frame(p, bg=DARK_RED); bf.pack(pady=(12,8))
+        tk.Button(bf, text="DELETE", font=("Consolas", 10, "bold"), fg=WHITE, bg=TRASH_RED, bd=0, padx=14, pady=4,
+                  command=lambda: [self.templates.pop(name, None), self._persist_templates(),
+                                   self._rebuild_template_menu(), self.template_var.set("SAD CLIP / HAPPY CLIP"),
+                                   p.destroy()]).pack(side="left", padx=4)
+        tk.Button(bf, text="ARCHIVE", font=("Consolas", 10, "bold"), fg=BLACK, bg=ACCENT, bd=0, padx=14, pady=4,
+                  command=p.destroy).pack(side="left", padx=4)
+        tk.Button(bf, text="CANCEL", font=("Consolas", 10), fg=WHITE, bg="#6B1010", bd=0, padx=14, pady=4,
+                  command=p.destroy).pack(side="left", padx=4)
+
+    def _rebuild_template_menu(self):
+        m = self.template_menu["menu"]; m.delete(0, "end")
+        for t in self.templates.keys(): m.add_command(label=t, command=lambda v=t: self._on_template_change(v))
+
     def _build_ui(self):
         tb=tk.Frame(self,bg=DARK_RED,height=40);tb.pack(fill="x");tb.pack_propagate(False)
         try:
