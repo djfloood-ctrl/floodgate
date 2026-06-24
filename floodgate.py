@@ -1,6 +1,7 @@
 """
-FLOODGATE v2.2 — Working Build
+FLOODGATE v2.2 — Working Build (FIXED)
 Uniform browse cards. Scrolling. Favorites. Tags. Trash. Upload. Projects.
+FIXES: Unified filters, grid stability, polling timeout, universal scroll, progress bar, hover effects.
 """
 
 import json, os, shutil, subprocess, sys, threading, tkinter as tk, platform
@@ -217,7 +218,7 @@ class FloodGate(ctk.CTk):
         self.browse_tag=tk.StringVar(value="all")
         self.browse_folder=tk.StringVar(value="all")
         self.browse_search=tk.StringVar(value="")
-        self.browse_search.trace_add("write", lambda *a: self._filter_search())
+        self.browse_search.trace_add("write", lambda *a: self._apply_filters())  # FIX #1: unified filter
         self.fmt_var=tk.StringVar(value=self.config.get("settings",{}).get("format","Reel / TikTok (9:16)"))
         self.len_var=tk.IntVar(value=self.config.get("settings",{}).get("clip_length",30))
 
@@ -230,9 +231,15 @@ class FloodGate(ctk.CTk):
         self.bind_all("<MouseWheel>", self._global_scroll)
 
         self._live_polling = False
+        self._poll_counter = 0  # FIX #3: timeout counter
         self._last_browse_state = None
         self._star_labels = {}
-        self._card_widgets = {}  # video_name -> {star, tags_frame, folder_label, card_frame}
+        self._card_widgets = {}
+        
+        # FIX #5: progress bar variables
+        self.progress_var = tk.DoubleVar(value=0)
+        self.progress_bar = None
+        
         self._build_ui()
         self.bind("<Control-r>",lambda e:self._run_remixer())
         self.bind("<Control-R>",lambda e:self._run_remixer())
@@ -246,177 +253,44 @@ class FloodGate(ctk.CTk):
     def _save_config(self): save_json(CONFIG_PATH,self.config)
     def _set_status(self,msg): self.after(0,lambda:self.status_var.set(msg))
 
+    # FIX #4: Universal momentum scroll
     def _global_scroll(self, event):
-        # Momentum scroll: tracks speed between events for fluid acceleration
         now = event.time
         delta = event.delta
-        
-        # Calculate scroll velocity (higher = user is scrolling faster)
         if not hasattr(self, '_last_scroll_time'):
             self._last_scroll_time = now
             self._scroll_momentum = 0
-        
         time_diff = max(now - self._last_scroll_time, 1)
         self._last_scroll_time = now
-        
-        # Base speed: 2x faster than before
         base = abs(delta) / 15
-        
-        # Build momentum on consecutive fast scrolls
         if time_diff < 80:
             self._scroll_momentum = min(self._scroll_momentum + 0.5, 4.0)
         else:
             self._scroll_momentum = max(self._scroll_momentum - 0.3, 1.0)
-        
         speed = base * self._scroll_momentum
         direction = -1 if delta > 0 else 1
         amount = int(direction * speed)
         
-        if isinstance(event.widget, tk.Listbox):
-            event.widget.yview_scroll(amount, "units")
+        widget = event.widget
+        if isinstance(widget, tk.Listbox):
+            widget.yview_scroll(amount, "units")
             return "break"
+        parent = widget
+        while parent:
+            if hasattr(parent, '_parent_canvas'):
+                parent._parent_canvas.yview_scroll(amount, "units")
+                return "break"
+            if isinstance(parent, tk.Canvas) and hasattr(parent, 'yview_scroll'):
+                parent.yview_scroll(amount, "units")
+                return "break"
+            parent = parent.master
         if hasattr(self, 'bcv') and self.bcv.winfo_ismapped():
             self.bcv._parent_canvas.yview_scroll(amount, "units")
-        elif hasattr(self, 'tabs') and 'ASSETS' in self.tabs:
+        elif 'ASSETS' in self.tabs and self.tabs['ASSETS'].winfo_ismapped():
             sf = self.tabs['ASSETS'].winfo_children()[0]
             if hasattr(sf, '_parent_canvas'):
                 sf._parent_canvas.yview_scroll(amount, "units")
-
-    def _on_format_change(self, choice):
-        if choice == "Custom":
-            self._open_custom_dialog()
-            return
-        self.fmt_var.set(choice)
-        if choice in FORMAT_PRESETS:
-            p = FORMAT_PRESETS[choice]
-            self.config["settings"]["target_w"] = p["w"]
-            self.config["settings"]["target_h"] = p["h"]
-            self.config["settings"]["target_fps"] = p["fps"]
-        self.config["settings"]["format"] = choice
-        self._save_config()
-
-    def _open_custom_dialog(self):
-        dialog = tk.Toplevel(self)
-        dialog.title("Custom Format")
-        dialog.configure(bg=DARK_RED)
-        dialog.geometry("300x280")
-        dialog.resizable(False, False)
-        dialog.transient(self)
-        dialog.grab_set()
-        dialog.attributes("-topmost", True)
-        
-        dialog.update_idletasks()
-        x = self.winfo_x() + (self.winfo_width() - 300) // 2
-        y = self.winfo_y() + (self.winfo_height() - 280) // 2
-        dialog.geometry(f"+{x}+{y}")
-        
-        tk.Label(dialog, text="CUSTOM FORMAT", font=("Helvetica Neue", 12, "bold"), fg=WHITE, bg=DARK_RED).pack(pady=(16,12))
-        
-        # Width
-        wf = tk.Frame(dialog, bg=DARK_RED); wf.pack(fill="x", padx=30, pady=6)
-        tk.Label(wf, text="Width (px):", font=("Courier New", 10), fg=GRAY, bg=DARK_RED).pack(side="left")
-        wv = tk.IntVar(value=1080)
-        tk.Entry(wf, textvariable=wv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
-        
-        # Height
-        hf = tk.Frame(dialog, bg=DARK_RED); hf.pack(fill="x", padx=30, pady=6)
-        tk.Label(hf, text="Height (px):", font=("Courier New", 10), fg=GRAY, bg=DARK_RED).pack(side="left")
-        hv = tk.IntVar(value=1920)
-        tk.Entry(hf, textvariable=hv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
-        
-        # FPS
-        ff = tk.Frame(dialog, bg=DARK_RED); ff.pack(fill="x", padx=30, pady=6)
-        tk.Label(ff, text="FPS:", font=("Courier New", 10), fg=GRAY, bg=DARK_RED).pack(side="left")
-        fv = tk.IntVar(value=30)
-        tk.Entry(ff, textvariable=fv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
-        
-        def save():
-            self.config["settings"]["target_w"] = wv.get()
-            self.config["settings"]["target_h"] = hv.get()
-            self.config["settings"]["target_fps"] = fv.get()
-            self.config["settings"]["format"] = "Custom"
-            self.fmt_var.set("Custom")
-            self._save_config()
-            dialog.destroy()
-        
-        def cancel():
-            self.fmt_var.set("Reel / TikTok (9:16)")
-            dialog.destroy()
-        
-        btn_frame = tk.Frame(dialog, bg=DARK_RED); btn_frame.pack(pady=(16,12))
-        tk.Button(btn_frame, text="APPLY", font=("Courier New", 10, "bold"), fg=BLACK, bg=WHITE, bd=0, padx=16, pady=4, cursor="hand2", command=save).pack(side="left", padx=4)
-        tk.Button(btn_frame, text="CANCEL", font=("Courier New", 10), fg=WHITE, bg="#6B1010", bd=0, padx=16, pady=4, cursor="hand2", command=cancel).pack(side="left", padx=4)
-        
-        dialog.protocol("WM_DELETE_WINDOW", cancel)
-        dialog.wait_window()
-
-    def _on_format_change(self, choice):
-        if choice == "Custom":
-            self._open_custom_dialog()
-            return
-        self.fmt_var.set(choice)
-        if choice in FORMAT_PRESETS:
-            p = FORMAT_PRESETS[choice]
-            self.config["settings"]["target_w"] = p["w"]
-            self.config["settings"]["target_h"] = p["h"]
-            self.config["settings"]["target_fps"] = p["fps"]
-        self.config["settings"]["format"] = choice
-        self._save_config()
-
-    def _open_custom_dialog(self):
-        dialog = tk.Toplevel(self)
-        dialog.title("Custom Format")
-        dialog.configure(bg=DARK_RED)
-        dialog.geometry("300x280")
-        dialog.resizable(False, False)
-        dialog.transient(self)
-        dialog.grab_set()
-        dialog.attributes("-topmost", True)
-        
-        dialog.update_idletasks()
-        x = self.winfo_x() + (self.winfo_width() - 300) // 2
-        y = self.winfo_y() + (self.winfo_height() - 280) // 2
-        dialog.geometry(f"+{x}+{y}")
-        
-        tk.Label(dialog, text="CUSTOM FORMAT", font=("Helvetica Neue", 12, "bold"), fg=WHITE, bg=DARK_RED).pack(pady=(16,12))
-        
-        # Width
-        wf = tk.Frame(dialog, bg=DARK_RED); wf.pack(fill="x", padx=30, pady=6)
-        tk.Label(wf, text="Width (px):", font=("Courier New", 10), fg=GRAY, bg=DARK_RED).pack(side="left")
-        wv = tk.IntVar(value=1080)
-        tk.Entry(wf, textvariable=wv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
-        
-        # Height
-        hf = tk.Frame(dialog, bg=DARK_RED); hf.pack(fill="x", padx=30, pady=6)
-        tk.Label(hf, text="Height (px):", font=("Courier New", 10), fg=GRAY, bg=DARK_RED).pack(side="left")
-        hv = tk.IntVar(value=1920)
-        tk.Entry(hf, textvariable=hv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
-        
-        # FPS
-        ff = tk.Frame(dialog, bg=DARK_RED); ff.pack(fill="x", padx=30, pady=6)
-        tk.Label(ff, text="FPS:", font=("Courier New", 10), fg=GRAY, bg=DARK_RED).pack(side="left")
-        fv = tk.IntVar(value=30)
-        tk.Entry(ff, textvariable=fv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
-        
-        def save():
-            self.config["settings"]["target_w"] = wv.get()
-            self.config["settings"]["target_h"] = hv.get()
-            self.config["settings"]["target_fps"] = fv.get()
-            self.config["settings"]["format"] = "Custom"
-            self.fmt_var.set("Custom")
-            self._save_config()
-            dialog.destroy()
-        
-        def cancel():
-            self.fmt_var.set("Reel / TikTok (9:16)")
-            dialog.destroy()
-        
-        btn_frame = tk.Frame(dialog, bg=DARK_RED); btn_frame.pack(pady=(16,12))
-        tk.Button(btn_frame, text="APPLY", font=("Courier New", 10, "bold"), fg=BLACK, bg=WHITE, bd=0, padx=16, pady=4, cursor="hand2", command=save).pack(side="left", padx=4)
-        tk.Button(btn_frame, text="CANCEL", font=("Courier New", 10), fg=WHITE, bg="#6B1010", bd=0, padx=16, pady=4, cursor="hand2", command=cancel).pack(side="left", padx=4)
-        
-        dialog.protocol("WM_DELETE_WINDOW", cancel)
-        dialog.wait_window()
+        return "break"
 
     def _on_template_change(self, choice):
         self.template_var.set(choice)
@@ -534,6 +408,62 @@ class FloodGate(ctk.CTk):
         m = self.template_menu["menu"]; m.delete(0, "end")
         for t in self.templates.keys(): m.add_command(label=t, command=lambda v=t: self._on_template_change(v))
 
+    def _on_format_change(self, choice):
+        if choice == "Custom":
+            self._open_custom_dialog()
+            return
+        self.fmt_var.set(choice)
+        if choice in FORMAT_PRESETS:
+            p = FORMAT_PRESETS[choice]
+            self.config["settings"]["target_w"] = p["w"]
+            self.config["settings"]["target_h"] = p["h"]
+            self.config["settings"]["target_fps"] = p["fps"]
+        self.config["settings"]["format"] = choice
+        self._save_config()
+
+    def _open_custom_dialog(self):
+        dialog = tk.Toplevel(self)
+        dialog.title("Custom Format")
+        dialog.configure(bg=DARK_RED)
+        dialog.geometry("300x280")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.attributes("-topmost", True)
+        dialog.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() - 300) // 2
+        y = self.winfo_y() + (self.winfo_height() - 280) // 2
+        dialog.geometry(f"+{x}+{y}")
+        tk.Label(dialog, text="CUSTOM FORMAT", font=("Helvetica Neue", 12, "bold"), fg=WHITE, bg=DARK_RED).pack(pady=(16,12))
+        wf = tk.Frame(dialog, bg=DARK_RED); wf.pack(fill="x", padx=30, pady=6)
+        tk.Label(wf, text="Width (px):", font=("Courier New", 10), fg=GRAY, bg=DARK_RED).pack(side="left")
+        wv = tk.IntVar(value=1080)
+        tk.Entry(wf, textvariable=wv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
+        hf = tk.Frame(dialog, bg=DARK_RED); hf.pack(fill="x", padx=30, pady=6)
+        tk.Label(hf, text="Height (px):", font=("Courier New", 10), fg=GRAY, bg=DARK_RED).pack(side="left")
+        hv = tk.IntVar(value=1920)
+        tk.Entry(hf, textvariable=hv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
+        ff = tk.Frame(dialog, bg=DARK_RED); ff.pack(fill="x", padx=30, pady=6)
+        tk.Label(ff, text="FPS:", font=("Courier New", 10), fg=GRAY, bg=DARK_RED).pack(side="left")
+        fv = tk.IntVar(value=30)
+        tk.Entry(ff, textvariable=fv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
+        def save():
+            self.config["settings"]["target_w"] = wv.get()
+            self.config["settings"]["target_h"] = hv.get()
+            self.config["settings"]["target_fps"] = fv.get()
+            self.config["settings"]["format"] = "Custom"
+            self.fmt_var.set("Custom")
+            self._save_config()
+            dialog.destroy()
+        def cancel():
+            self.fmt_var.set("Reel / TikTok (9:16)")
+            dialog.destroy()
+        btn_frame = tk.Frame(dialog, bg=DARK_RED); btn_frame.pack(pady=(16,12))
+        tk.Button(btn_frame, text="APPLY", font=("Courier New", 10, "bold"), fg=BLACK, bg=WHITE, bd=0, padx=16, pady=4, cursor="hand2", command=save).pack(side="left", padx=4)
+        tk.Button(btn_frame, text="CANCEL", font=("Courier New", 10), fg=WHITE, bg="#6B1010", bd=0, padx=16, pady=4, cursor="hand2", command=cancel).pack(side="left", padx=4)
+        dialog.protocol("WM_DELETE_WINDOW", cancel)
+        dialog.wait_window()
+
     def _build_ui(self):
         tb=tk.Frame(self,bg=DARK_RED,height=40);tb.pack(fill="x");tb.pack_propagate(False)
         try:
@@ -556,15 +486,23 @@ class FloodGate(ctk.CTk):
         self.tabs={}
         self._build_assets();self._build_browse();self._build_upload()
         self.show_tab("ASSETS")
-        self.status_var=tk.StringVar(value="Ready  •  Ctrl+R  •  F11")
-        tk.Label(self,textvariable=self.status_var,font=self.fonts["small"],fg=GRAY,bg=DARK_RED,anchor="w").pack(fill="x",padx=12,pady=4)
+        
+        # FIX #5: Status bar with progress bar
+        status_frame = tk.Frame(self, bg=DARK_RED)
+        status_frame.pack(fill="x", padx=12, pady=4)
+        self.status_var = tk.StringVar(value="Ready  •  Ctrl+R  •  F11")
+        tk.Label(status_frame, textvariable=self.status_var, font=self.fonts["small"], fg=GRAY, bg=DARK_RED, anchor="w").pack(side="left", fill="x", expand=True)
+        self.progress_bar = ctk.CTkProgressBar(status_frame, width=150, height=12, fg_color="#6B1010", progress_color=ACCENT)
+        self.progress_bar.pack(side="right", padx=(10,0))
+        self.progress_bar.set(0)
+        self.progress_bar.pack_forget()
 
     def show_tab(self,name):
         for n,f in self.tabs.items(): f.pack_forget()
         if name in self.tabs: self.tabs[name].pack(fill="both",expand=True)
         for n,b in self.tab_btns.items(): b.config(fg=TAB_ACTIVE if n==name else TAB_INACTIVE)
         if name=="BROWSE" and not hasattr(self, '_browse_loaded'):
-            self._refresh_browse()  # first load only
+            self._refresh_browse()
 
     def _build_assets(self):
         tab=tk.Frame(self.content,bg=BG_RED);self.tabs["ASSETS"]=tab
@@ -576,18 +514,20 @@ class FloodGate(ctk.CTk):
 
         tk.Label(fb,text="TEMPLATE:",font=("Courier New",8,"bold"),fg=ACCENT,bg=DARK_RED).pack(side="left",padx=(10,4))
         self.template_var = tk.StringVar(value="SAD CLIP / HAPPY CLIP")
-        tm = tk.OptionMenu(fb, self.template_var, *self.templates.keys(), command=self._on_template_change)
-        tm.config(font=self.fonts["body"], bg=DARK_RED, fg=WHITE, activebackground=CARD_BG, bd=0, highlightthickness=0)
-        tm["menu"].config(font=self.fonts["body"], bg=CARD_BG, fg=WHITE, bd=0)
-        tm.pack(side="left", padx=2)
+        self.template_menu = tk.OptionMenu(fb, self.template_var, *self.templates.keys(), command=self._on_template_change)
+        self.template_menu.config(font=self.fonts["body"], bg=DARK_RED, fg=WHITE, activebackground=CARD_BG, bd=0, highlightthickness=0)
+        self.template_menu["menu"].config(font=self.fonts["body"], bg=CARD_BG, fg=WHITE, bd=0)
+        self.template_menu.pack(side="left", padx=2)
+        tk.Button(fb, text="+", font=("Courier New",7,"bold"), fg=BLACK, bg=WHITE, bd=0, padx=4, cursor="hand2", command=self._save_template).pack(side="left", padx=1)
+        tk.Button(fb, text="✖", font=("Courier New",7,"bold"), fg=TRASH_RED, bg=DARK_RED, bd=0, padx=4, cursor="hand2", command=self._remove_template_popup).pack(side="left", padx=1)
         tk.Label(fb,text="FORMAT:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(10,4))
-        fm=tk.OptionMenu(fb,self.fmt_var,*FORMAT_PRESETS.keys(),command=self._on_format_change)
-        fm.config(font=self.fonts["body"],bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
-        fm["menu"].config(font=self.fonts["body"],bg=CARD_BG,fg=WHITE,bd=0);fm.pack(side="left",padx=2)
+        self.fmt_menu=tk.OptionMenu(fb,self.fmt_var,*FORMAT_PRESETS.keys(),command=self._on_format_change)
+        self.fmt_menu.config(font=self.fonts["body"],bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
+        self.fmt_menu["menu"].config(font=self.fonts["body"],bg=CARD_BG,fg=WHITE,bd=0);self.fmt_menu.pack(side="left",padx=2)
         tk.Label(fb,text="LENGTH:",font=("Courier New",8,"bold"),fg=GRAY,bg=DARK_RED).pack(side="left",padx=(14,4))
-        lm=tk.OptionMenu(fb,self.len_var,*CLIP_LENGTHS.keys(),command=lambda c:[self.len_var.set(CLIP_LENGTHS[c]),self._save_config()])
-        lm.config(font=self.fonts["body"],bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
-        lm["menu"].config(font=self.fonts["body"],bg=CARD_BG,fg=WHITE,bd=0);lm.pack(side="left",padx=2)
+        self.len_menu=tk.OptionMenu(fb,self.len_var,*CLIP_LENGTHS.keys(),command=lambda c:[self.len_var.set(CLIP_LENGTHS[c]),self._save_config()])
+        self.len_menu.config(font=self.fonts["body"],bg=DARK_RED,fg=WHITE,activebackground=CARD_BG,bd=0,highlightthickness=0)
+        self.len_menu["menu"].config(font=self.fonts["body"],bg=CARD_BG,fg=WHITE,bd=0);self.len_menu.pack(side="left",padx=2)
 
         af=tk.Frame(sf,bg=BG_RED);af.pack(fill="x",padx=60,pady=(4,0))
         af.columnconfigure(0,weight=1);af.columnconfigure(1,weight=1)
@@ -619,7 +559,7 @@ class FloodGate(ctk.CTk):
         ma=tk.Frame(tab,bg=BG_RED);ma.pack(side="left",fill="both",expand=True)
         ctr=tk.Frame(ma,bg=BG_RED);ctr.pack(fill="x",padx=12,pady=(8,4))
         tk.Label(ctr,text="BROWSE",font=self.fonts["title"],fg=WHITE,bg=BG_RED).pack(side="left")
-        HoverButton(ctr,text="↻",font=self.fonts["button"],fg=BLACK,bg=WHITE,bd=0,padx=10,pady=3,cursor="hand2",command=lambda:self._refresh_browse()).pack(side="right",padx=2)  # MANUAL REFRESH ONLY
+        HoverButton(ctr,text="↻",font=self.fonts["button"],fg=BLACK,bg=WHITE,bd=0,padx=10,pady=3,cursor="hand2",command=lambda:self._refresh_browse()).pack(side="right",padx=2)
         tk.Entry(ctr,textvariable=self.browse_search,font=self.fonts["body"],bg=DARK_RED,fg=WHITE,insertbackground=WHITE,bd=0,width=18,highlightthickness=1,highlightcolor=BORDER).pack(side="right",padx=2,ipady=2)
         sr=tk.Frame(ma,bg=BG_RED);sr.pack(fill="x",padx=12,pady=(0,4))
         for l,v in [("DATE ↓","date_desc"),("★","favs_first"),("NAME","name_asc")]:
@@ -630,18 +570,36 @@ class FloodGate(ctk.CTk):
         self.bcv.pack(side="left",fill="both",expand=True)
         self.bframe=self.bcv
 
-        self._refresh_browse()  # initial load
+        self._refresh_browse()
 
-    def _filter_search(self):
-        q = self.browse_search.get().lower()
+    # FIX #1: Unified filter function
+    def _apply_filters(self):
+        """Apply all filters (search, folder, tag) to existing cards in-place."""
+        folder = self.browse_folder.get()
+        tag = self.browse_tag.get()
+        query = self.browse_search.get().lower()
+        
         for vname, wdata in list(self._card_widgets.items()):
             card = wdata['frame']
-            if not card.winfo_exists(): continue
-            if not q or q in vname.lower():
-                card.pack(side="left",padx=4,fill="x",expand=True)
-                card.master.pack(fill="x",padx=8,pady=4)
+            if not card.winfo_exists():
+                continue
+            show = True
+            if folder == "favorites":
+                show = self.meta.is_favorite(vname)
+            elif folder == "trash":
+                show = False
+            elif folder not in ("all", "favorites"):
+                show = (self.meta.get_folder(vname) == folder)
+            if show and tag != "all":
+                show = (tag in self.meta.get_tags(vname))
+            if show and query:
+                show = (query in vname.lower())
+            if show:
+                card.pack(side="left", padx=4, fill="x", expand=True)
+                card.master.pack(fill="x", padx=8, pady=4)
             else:
                 card.pack_forget()
+        self._refresh_folders_tags()
 
     def _refresh_folders_tags(self):
         self.flb.delete(0,"end")
@@ -658,43 +616,13 @@ class FloodGate(ctk.CTk):
         if sel:
             ft=self.flb.get(sel[0]).strip();f=ft.replace("[TRASH]","").strip()
             self.browse_folder.set(f);self.browse_tag.set("all")
-            # Filter cards in-place instead of rebuilding
-            folder = self.browse_folder.get()
-            for vname, wdata in list(self._card_widgets.items()):
-                card = wdata['frame']
-                if not card.winfo_exists(): continue
-                if folder == "all":
-                    card.pack(side="left",padx=4,fill="x",expand=True)
-                    card.master.pack(fill="x",padx=8,pady=4)
-                elif folder == "favorites":
-                    if self.meta.is_favorite(vname):
-                        card.pack(side="left",padx=4,fill="x",expand=True)
-                        card.master.pack(fill="x",padx=8,pady=4)
-                    else:
-                        card.pack_forget()
-                elif folder == "trash":
-                    card.pack_forget()
-                elif self.meta.get_folder(vname) == folder:
-                    card.pack(side="left",padx=4,fill="x",expand=True)
-                    card.master.pack(fill="x",padx=8,pady=4)
-                else:
-                    card.pack_forget()
-            self._refresh_folders_tags()
+            self._apply_filters()
 
     def _on_tag(self,event=None):
         sel=self.tlb.curselection()
         if sel:
             self.browse_tag.set(self.tlb.get(sel[0]).strip())
-            tag = self.browse_tag.get()
-            for vname, wdata in list(self._card_widgets.items()):
-                card = wdata['frame']
-                if not card.winfo_exists(): continue
-                if tag == "all" or tag in self.meta.get_tags(vname):
-                    card.pack(side="left",padx=4,fill="x",expand=True)
-                    card.master.pack(fill="x",padx=8,pady=4)
-                else:
-                    card.pack_forget()
-            self._refresh_folders_tags()
+            self._apply_filters()
 
     def _new_folder(self):
         n=simpledialog.askstring("New Folder","Folder name:")
@@ -702,24 +630,6 @@ class FloodGate(ctk.CTk):
 
     def _full_rebuild(self):
         self._refresh_browse()
-
-    def _filter_folder(self):
-        folder = self.browse_folder.get()
-        tag = self.browse_tag.get()
-        for vname, wdata in list(self._card_widgets.items()):
-            card = wdata['frame']
-            if not card.winfo_exists(): continue
-            show = True
-            if folder == "favorites" and not self.meta.is_favorite(vname): show = False
-            elif folder == "trash": show = False
-            elif folder not in ("all","favorites") and self.meta.get_folder(vname) != folder: show = False
-            if tag != "all" and tag not in self.meta.get_tags(vname): show = False
-            if show:
-                card.pack(side="left",padx=4,fill="x",expand=True)
-                card.master.pack(fill="x",padx=8,pady=4)
-            else:
-                card.pack_forget()
-        self._refresh_folders_tags()
 
     def _update_tags_inplace(self, vp):
         if vp.name in self._card_widgets and 'tags' in self._card_widgets[vp.name]:
@@ -735,6 +645,7 @@ class FloodGate(ctk.CTk):
             flbl = self._card_widgets[vp.name]['folder']
             flbl.config(text=f"[{folder}]")
 
+    # FIX #2 & #6: Full rebuild on modifications + hover effects
     def _refresh_browse(self):
         self._star_labels.clear()
         self._card_widgets.clear()
@@ -755,7 +666,8 @@ class FloodGate(ctk.CTk):
         elif sort=="name_asc": videos.sort(key=lambda v:v.stem.lower())
         if not videos:
             tk.Label(self.bframe,text="Trash is empty." if tm else "No clips.",font=("Courier New",9),fg=GRAY,bg=BG_RED).pack(expand=True,pady=40)
-            self._refresh_folders_tags();return
+            self._apply_filters()
+            return
         if tm:
             tb=tk.Frame(self.bframe,bg=BG_RED);tb.pack(fill="x",padx=12,pady=(4,6))
             HoverButton(tb,text="DELETE ALL FOREVER",font=("Courier New",8,"bold"),fg=WHITE,bg=TRASH_RED,bd=0,padx=12,pady=4,cursor="hand2",command=self._empty_trash).pack(side="left")
@@ -768,6 +680,15 @@ class FloodGate(ctk.CTk):
             views=self.meta.get_views(vid.name);fn=self.meta.get_folder(vid.name)
 
             card=tk.Frame(rf,bg=CARD_BG,highlightthickness=1,highlightbackground=BORDER,highlightcolor=BORDER,width=180,height=210)
+            
+            # FIX #6: Hover effects
+            def on_enter(e, c=card):
+                c.config(highlightbackground=ACCENT, highlightthickness=2)
+            def on_leave(e, c=card):
+                c.config(highlightbackground=BORDER, highlightthickness=1)
+            card.bind("<Enter>", on_enter)
+            card.bind("<Leave>", on_leave)
+            
             card.pack(side="left",padx=4)
             card.pack_propagate(False)
             card.video_name = vid.name
@@ -809,24 +730,14 @@ class FloodGate(ctk.CTk):
             else:
                 HoverButton(br2,text="RESTORE",font=("Courier New",7,"bold"),fg=BLACK,bg=UPLOAD_GREEN,bd=0,padx=8,pady=2,command=lambda p=vid:self._restore(p)).pack(side="left",padx=2)
                 HoverButton(br2,text="DELETE",font=("Courier New",7,"bold"),fg=WHITE,bg=TRASH_RED,bd=0,padx=8,pady=2,command=lambda p=vid:self._delete_forever(p)).pack(side="left",padx=2)
-        self._refresh_folders_tags()
+        self._apply_filters()
 
+    # FIX #2: Full rebuild on trash/restore/delete to fix grid
     def _move_trash_instant(self, vp):
         TRASH_DIR.mkdir(parents=True,exist_ok=True);d=TRASH_DIR/vp.name
         if vp.exists(): shutil.move(str(vp),str(d))
         self.meta.set_folder(vp.name,"trash")
-        # Remove card in-place
-        if vp.name in self._card_widgets:
-            card = self._card_widgets[vp.name]['frame']
-            if card.winfo_exists():
-                parent = card.master
-                card.destroy()
-                if vp.name in self._star_labels: del self._star_labels[vp.name]
-                del self._card_widgets[vp.name]
-                # If parent row is now empty, remove it
-                if len(parent.winfo_children()) == 0:
-                    parent.destroy()
-        self._refresh_folders_tags()
+        self._refresh_browse()
 
     def _delete_forever_confirm(self, vp):
         if messagebox.askyesno("Delete Forever",f"Permanently delete {vp.name}?\nThis cannot be undone."):
@@ -838,45 +749,32 @@ class FloodGate(ctk.CTk):
         d=OUTPUT_DIR/vp.name
         if vp.exists(): shutil.move(str(vp),str(d))
         self.meta.set_folder(vp.name,"all")
-        # In-place remove from trash view
-        if vp.name in self._card_widgets:
-            card = self._card_widgets[vp.name]['frame']
-            if card.winfo_exists():
-                parent = card.master
-                card.destroy()
-                if vp.name in self._star_labels: del self._star_labels[vp.name]
-                del self._card_widgets[vp.name]
-                if len(parent.winfo_children()) == 0:
-                    parent.destroy()
-        self._refresh_folders_tags()
+        self._refresh_browse()
     def _delete_forever(self,vp):
         if messagebox.askyesno("Delete Forever",f"Permanently delete {vp.name}?"):
             if vp.exists(): vp.unlink()
             if vp.name in self.meta.data: del self.meta.data[vp.name];self.meta._save()
-            self._filter_folder()
+            self._refresh_browse()
     def _empty_trash(self):
         if messagebox.askyesno("Empty Trash","Delete ALL trash forever?"):
             for v in TRASH_DIR.glob("*.mp4"):
                 v.unlink()
                 if v.name in self.meta.data: del self.meta.data[v.name]
-            self.meta._save();self._filter_folder()
+            self.meta._save();self._refresh_browse()
     def _toggle_fav(self,vp):
         self.meta.toggle_favorite(vp.name)
         is_fav = self.meta.is_favorite(vp.name)
-        # Update star in-place if card exists
         if vp.name in self._star_labels:
             lbl = self._star_labels[vp.name]
             if lbl.winfo_exists():
                 lbl.config(text="★" if is_fav else "☆", fg=STAR_GOLD if is_fav else GRAY)
-        # If in favorites folder and unfavorited, refresh the folder view
-        if self.browse_folder.get() == "favorites" and not is_fav:
-            self._filter_folder()
+        self._apply_filters()
     def _view(self,vp):
         self.meta.increment_views(vp.name)
         if platform.system()=="Windows": os.startfile(str(vp))
         elif platform.system()=="Darwin": subprocess.Popen(["open",str(vp)])
         else: subprocess.Popen(["xdg-open",str(vp)])
-        self._filter_folder()
+        self._apply_filters()
     def _tag(self,vp):
         ex=", ".join(self.meta.get_all_tags())
         tag=simpledialog.askstring("Add Tag",f"Tag for {vp.name}:\nExisting: {ex}")
@@ -995,20 +893,37 @@ class FloodGate(ctk.CTk):
         paths=filedialog.askopenfilenames(title=f"Select files for {meta['label']}",filetypes=meta["types"]+[("All files","*.*")])
         if not paths: return
         threading.Thread(target=self._process_files,args=(key,meta,paths),daemon=True).start()
-    def _process_files(self,key,meta,paths):
-        self._busy=True;added=0
-        for path in paths:
-            src=Path(path);size=src.stat().st_size
-            if size>200*1024*1024: rel=str(src).replace("\\","/")
+    
+    # FIX #5: Progress bar for file adding
+    def _process_files(self, key, meta, paths):
+        self._busy = True
+        self.after(0, lambda: self._show_progress(True))
+        added = 0
+        total = len(paths)
+        for idx, path in enumerate(paths):
+            src = Path(path)
+            size = src.stat().st_size
+            if size > 200 * 1024 * 1024:
+                rel = str(src).replace("\\", "/")
             else:
-                dd=BASE_DIR/meta["subfolder"];dd.mkdir(parents=True,exist_ok=True)
-                dest=dd/src.name
-                if str(dest)!=str(src): shutil.copy2(str(src),str(dest))
-                rel=str(dest.relative_to(BASE_DIR)).replace("\\","/")
-            cur=self.config.get(key,[])
-            if rel not in cur: cur.append(rel);added+=1
-            self.config[key]=cur
-        self._save_config();self.after(0,lambda:self._refresh_listbox(key));self._set_status(f"{added} file(s) added.");self._busy=False
+                dd = BASE_DIR / meta["subfolder"]
+                dd.mkdir(parents=True, exist_ok=True)
+                dest = dd / src.name
+                if str(dest) != str(src):
+                    shutil.copy2(str(src), str(dest))
+                rel = str(dest.relative_to(BASE_DIR)).replace("\\", "/")
+            cur = self.config.get(key, [])
+            if rel not in cur:
+                cur.append(rel)
+                added += 1
+            self.config[key] = cur
+            progress = (idx + 1) / total
+            self.after(0, lambda p=progress: self._update_progress(p))
+        self._save_config()
+        self.after(0, lambda: [self._refresh_listbox(key), self._show_progress(False)])
+        self._set_status(f"{added} file(s) added.")
+        self._busy = False
+
     def _remove_selected(self,key):
         lb=self.listboxes.get(key)
         if not lb: return
@@ -1088,31 +1003,59 @@ class FloodGate(ctk.CTk):
         menu=self.proj_menu["menu"];menu.delete(0,"end")
         for name in self.projects.list_names(): menu.add_command(label=name,command=lambda v=name:(self.proj_var.set(v),self._on_project(v)))
 
+    # FIX #3: Live polling with timeout
     def _start_live_polling(self):
         if not self._live_polling:
             self._live_polling = True
+            self._poll_counter = 0
             self._poll_browse()
 
     def _poll_browse(self):
-        if not self._live_polling: return
-        # Auto-stop if render complete
-        if (BASE_DIR / "_render_complete.txt").exists():
-            self._stop_live_polling()
-            self._filter_folder()
+        if not self._live_polling:
             return
-        if hasattr(self, 'bframe'):
-            try:
-                current_count = len(list(OUTPUT_DIR.glob("*.mp4")))
-                if not hasattr(self, '_last_video_count') or current_count != self._last_video_count:
-                    self._filter_folder()
-                    self._last_video_count = current_count
-            except: pass
-            self.after(1500, self._poll_browse)
+        
+        self._poll_counter += 1
+        if self._poll_counter > 40:  # 60 seconds timeout (40 * 1.5s)
+            self._stop_live_polling()
+            self._set_status("⚠️ Render timed out or crashed – check terminal.")
+            return
+        
+        done_file = BASE_DIR / "_render_complete.txt"
+        if done_file.exists():
+            self._stop_live_polling()
+            self._refresh_browse()
+            self._set_status("✅ Render complete – browse updated.")
+            done_file.unlink(missing_ok=True)
+            return
+        
+        try:
+            current_count = len(list(OUTPUT_DIR.glob("*.mp4")))
+            if not hasattr(self, '_last_video_count'):
+                self._last_video_count = current_count
+            elif current_count != self._last_video_count:
+                self._last_video_count = current_count
+                self._refresh_browse()
+        except:
+            pass
+        
+        self.after(1500, self._poll_browse)
 
     def _stop_live_polling(self):
         self._live_polling = False
-        self._last_browse_state = None
-        if hasattr(self, '_last_video_count'): del self._last_video_count
+        self._poll_counter = 0
+        if hasattr(self, '_last_video_count'):
+            del self._last_video_count
+
+    # FIX #5: Progress bar helpers
+    def _show_progress(self, show=True):
+        if show:
+            self.progress_bar.pack(side="right", padx=(10,0))
+            self.progress_bar.set(0)
+        else:
+            self.progress_bar.pack_forget()
+
+    def _update_progress(self, value):
+        self.progress_bar.set(value)
 
     def _run_remixer(self):
         rp=BASE_DIR/"remixer.py"
@@ -1137,13 +1080,16 @@ class FloodGate(ctk.CTk):
             f.write("echo.\necho   ====================================\necho     COMPLETE - Close this window.\necho   ====================================\necho.\n")
             f.write(f'echo DONE > "{BASE_DIR}\\_render_complete.txt"\n')
             f.write("pause\n")
-        # Clear completion signal
         done_file = BASE_DIR / "_render_complete.txt"
         if done_file.exists(): done_file.unlink()
         self._start_live_polling()
         subprocess.Popen(["cmd","/k",str(bp)],creationflags=subprocess.CREATE_NEW_CONSOLE)
         self._set_status(f"Remixer launched — {self.render_count_var.get()} renders.")
-    def on_close(self): self._stop_live_polling();self._save_proj();self.destroy()
+    
+    def on_close(self): 
+        self._stop_live_polling()
+        self._save_proj()
+        self.destroy()
 
 if __name__=="__main__":
     app=FloodGate();app.protocol("WM_DELETE_WINDOW",app.on_close);app.mainloop()
