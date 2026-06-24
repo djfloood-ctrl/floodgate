@@ -2,7 +2,7 @@
 ui_assets.py – Asset tab UI and logic for FloodGate
 """
 
-import os, shutil, threading, tkinter as tk
+import os, shutil, threading, tkinter as tk, platform
 import customtkinter as ctk
 from tkinter import filedialog, messagebox, simpledialog
 from pathlib import Path
@@ -11,7 +11,6 @@ from core import *
 class AssetUI:
     def __init__(self, app):
         self.app = app
-        # shortcuts
         self.config = app.config
         self.fonts = app.fonts
         self.listboxes = app.listboxes
@@ -20,15 +19,16 @@ class AssetUI:
         self.upload = app.upload
         self.fonts_ok = app.fonts_ok
         self._busy = False
+        self.log_widget = None
+        self.log_hovered = False
 
     def build_tab(self, parent):
-        """Build the ASSETS tab inside the given parent (the content frame)."""
         tab = tk.Frame(parent, bg=BG_RED)
         self.tab = tab
         sf = ctk.CTkScrollableFrame(tab, fg_color=BG_RED)
         sf.pack(side="left", fill="both", expand=True)
 
-        # Top bar: template, format, length
+        # Top bar
         fb = tk.Frame(sf, bg=DARK_RED, height=34)
         fb.pack(fill="x", padx=14, pady=(6,4))
         fb.pack_propagate(False)
@@ -52,7 +52,7 @@ class AssetUI:
         self.app.len_menu["menu"].config(font=self.app.fonts["body"], bg=CARD_BG, fg=WHITE, bd=0)
         self.app.len_menu.pack(side="left", padx=2)
 
-        # Two columns: left/right for slots
+        # Two columns
         af = tk.Frame(sf, bg=BG_RED)
         af.pack(fill="x", padx=60, pady=(4,0))
         af.columnconfigure(0, weight=1)
@@ -68,7 +68,7 @@ class AssetUI:
             else:
                 self._slot(rc, key, m)
 
-        # Center: voiceover, logo, settings, render
+        # Center
         ct = tk.Frame(sf, bg=BG_RED)
         ct.pack(fill="x", padx=80, pady=(4,0))
         self._slot(ct, "voiceover_clips", SLOTS["voiceover_clips"])
@@ -76,13 +76,76 @@ class AssetUI:
         self._settings_card(ct)
         self._render_card(ct)
 
-        note = tk.Frame(ct, bg=DARK_RED, highlightthickness=1, highlightbackground=BORDER)
-        note.pack(fill="x", pady=(6,0))
-        tk.Label(note, text="◈  RENDER OUTPUT → EXTERNAL TERMINAL", font=("Courier New",7,"bold"), fg=WHITE, bg=DARK_RED).pack(pady=8)
-        tk.Label(ct, text="Ready  •  Ctrl+R  •  F11", font=self.fonts["small"], fg=GRAY, bg=BG_RED).pack(pady=(6,20))
+        # Log viewer – the working approach with _parent_canvas
+        log_frame = tk.Frame(ct, bg=DARK_RED)
+        log_frame.pack(fill="x", pady=(6,0))
+        tk.Label(log_frame, text="REMIXER LOG", font=("Courier New",7,"bold"), fg=GRAY, bg=DARK_RED, anchor="w").pack(fill="x", padx=4, pady=(4,0))
+
+        self.log_widget = ctk.CTkTextbox(log_frame, fg_color=DARK_RED, text_color=WHITE, font=("Courier New",11), height=120, wrap="word")
+        self.log_widget.pack(fill="x", padx=4, pady=(0,4))
+        self.log_widget.insert("end", "Ready for remixer output...\n")
+        self.log_widget.configure(state="disabled")
+
+        # Force scrollbar visible
+        if hasattr(self.log_widget, '_scrollbar'):
+            self.log_widget._scrollbar.pack(side="right", fill="y")
+
+        # --- WORKING SCROLL LOGIC (using _parent_canvas, no errors) ---
+        def on_log_scroll(event):
+            # Determine scroll direction
+            if hasattr(event, 'num'):
+                if event.num == 4:
+                    units = -1
+                elif event.num == 5:
+                    units = 1
+                else:
+                    units = 0
+            else:
+                delta = event.delta
+                if delta > 0:
+                    units = -1
+                elif delta < 0:
+                    units = 1
+                else:
+                    units = 0
+            if units != 0:
+                try:
+                    if hasattr(self.log_widget, '_parent_canvas'):
+                        # Use the canvas method – this worked for scrolling
+                        self.log_widget._parent_canvas.yview_scroll(units, "units")
+                    else:
+                        # Fallback
+                        self.log_widget.yview_scroll(units, "units")
+                except Exception:
+                    # If anything fails, use the fallback
+                    self.log_widget.yview_scroll(units, "units")
+                return "break"
+            return "break"
+
+        # Bind to the log widget itself (catches events on the text area)
+        self.log_widget.bind("<MouseWheel>", on_log_scroll, add="+")
+        self.log_widget.bind("<Button-4>", on_log_scroll, add="+")
+        self.log_widget.bind("<Button-5>", on_log_scroll, add="+")
+        # Also bind to the internal text widget if it exists
+        if hasattr(self.log_widget, '_textbox'):
+            self.log_widget._textbox.bind("<MouseWheel>", on_log_scroll, add="+")
+            self.log_widget._textbox.bind("<Button-4>", on_log_scroll, add="+")
+            self.log_widget._textbox.bind("<Button-5>", on_log_scroll, add="+")
+
+        # Hover tracking for global scroll bypass
+        def set_hover(state):
+            self.log_hovered = state
+        self.log_widget.bind("<Enter>", lambda e: set_hover(True), add="+")
+        self.log_widget.bind("<Leave>", lambda e: set_hover(False), add="+")
+        if hasattr(self.log_widget, '_textbox'):
+            self.log_widget._textbox.bind("<Enter>", lambda e: set_hover(True), add="+")
+            self.log_widget._textbox.bind("<Leave>", lambda e: set_hover(False), add="+")
 
         return tab
 
+    # ------------------------------------------------------------------
+    # All other methods (unchanged)
+    # ------------------------------------------------------------------
     def _slot(self, parent, key, meta):
         card = tk.Frame(parent, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER, highlightcolor=BORDER)
         card.pack(fill="x", pady=(0,6), ipady=2)
@@ -152,6 +215,28 @@ class AssetUI:
                         command=lambda v=n: (self.render_count_var.set(v), self.count_label.config(text=str(v)), self.config.update({"num_renders":v}), self.app._save_config())).pack(side="left", padx=1)
         HoverButton(card, text="▶  RUN REMIXER  (Ctrl+R)", font=("Helvetica Neue",11,"bold"), fg=BLACK, bg=WHITE, hover_bg=ACCENT, hover_fg=WHITE, bd=0, padx=24, pady=6, cursor="hand2", command=self.app._run_remixer).pack(pady=(0,8))
 
+    # ------------------------------------------------------------------
+    # Log methods
+    # ------------------------------------------------------------------
+    def clear_log(self):
+        if self.log_widget:
+            self.log_widget.configure(state="normal")
+            self.log_widget.delete("1.0", "end")
+            self.log_widget.configure(state="disabled")
+
+    def log(self, message):
+        if self.log_widget:
+            self.app.after(0, lambda: self._do_log(message))
+
+    def _do_log(self, message):
+        self.log_widget.configure(state="normal")
+        self.log_widget.insert("end", message + "\n")
+        self.log_widget.see("end")
+        self.log_widget.configure(state="disabled")
+
+    # ------------------------------------------------------------------
+    # File operations
+    # ------------------------------------------------------------------
     def _add_files(self, key, meta):
         if self._busy: return
         paths = filedialog.askopenfilenames(title=f"Select files for {meta['label']}", filetypes=meta["types"] + [("All files","*.*")])
@@ -253,7 +338,6 @@ class AssetUI:
         self.app._set_status("Settings saved.")
 
     def refresh_all(self):
-        """Refresh all listboxes and logo display."""
         for key in self.listboxes:
             self._refresh_listbox(key)
         self.logo_var.set(self.config.get("logo", ""))

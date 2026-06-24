@@ -29,6 +29,8 @@ class BrowseUI:
         self.flb = None
         self.tlb = None
         self.bcv = None
+        # remember sort per folder
+        self._folder_sort = {}
 
     def build_tab(self, parent):
         """Build the BROWSE tab inside the given parent."""
@@ -115,9 +117,27 @@ class BrowseUI:
         if sel:
             ft = self.flb.get(sel[0]).strip()
             f = ft.replace("[TRASH]", "").strip()
+            
+            # Save current sort for the old folder before switching
+            current_folder = self.browse_folder.get()
+            if current_folder in self._folder_sort:
+                self._folder_sort[current_folder] = self.browse_sort.get()
+            
             self.browse_folder.set(f)
             self.browse_tag.set("all")
-            self._apply_filters()
+            
+            # Apply saved sort for the new folder, or set a default
+            if f in self._folder_sort:
+                self.browse_sort.set(self._folder_sort[f])
+            else:
+                # Default: "favs_first" for favorites, "date_desc" for others
+                if f == "favorites":
+                    self.browse_sort.set("favs_first")
+                else:
+                    self.browse_sort.set("date_desc")
+            
+            # FULL REBUILD to apply new sort
+            self._refresh_browse()
 
     def _on_tag(self, event=None):
         sel = self.tlb.curselection()
@@ -132,6 +152,9 @@ class BrowseUI:
             self._refresh_folders_tags()
 
     def _full_rebuild(self):
+        # Save current sort for the current folder
+        current_folder = self.browse_folder.get()
+        self._folder_sort[current_folder] = self.browse_sort.get()
         self._refresh_browse()
 
     def _refresh_browse(self):

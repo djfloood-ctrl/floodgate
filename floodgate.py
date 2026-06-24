@@ -51,11 +51,9 @@ class FloodGate(ctk.CTk):
         self._busy = False
         self._logo_img = None
 
-        # --- ADD THESE LINES ---
         self.BASE_DIR = BASE_DIR
         self.OUTPUT_DIR = OUTPUT_DIR
         self.TRASH_DIR = TRASH_DIR
-        # -------------------------
 
         self.browse_sort = tk.StringVar(value="date_desc")
         self.browse_tag = tk.StringVar(value="all")
@@ -77,6 +75,7 @@ class FloodGate(ctk.CTk):
         self._last_browse_state = None
         self.progress_var = tk.DoubleVar(value=0)
         self.progress_bar = None
+        self._process = None
 
         self._build_ui()
         self.bind("<Control-r>",lambda e:self._run_remixer())
@@ -102,6 +101,11 @@ class FloodGate(ctk.CTk):
     # Scrolling
     # ------------------------------------------------------------------
     def _global_scroll(self, event):
+        # --- FIX: If the mouse is over the log widget, do nothing ---
+        if hasattr(self, 'asset_ui') and self.asset_ui.log_hovered:
+            return "break"
+        # -----------------------------------------------------------
+
         now = event.time
         delta = event.delta
         if not hasattr(self, '_last_scroll_time'):
@@ -140,10 +144,9 @@ class FloodGate(ctk.CTk):
         return "break"
 
     # ------------------------------------------------------------------
-    # UI Build
+    # UI Build (unchanged)
     # ------------------------------------------------------------------
     def _build_ui(self):
-        # Top bar
         tb = tk.Frame(self, bg=DARK_RED, height=40)
         tb.pack(fill="x")
         tb.pack_propagate(False)
@@ -166,23 +169,19 @@ class FloodGate(ctk.CTk):
             btn.pack(side="left", ipady=8)
             self.tab_btns[name] = btn
 
-        # Content area
         self.content = tk.Frame(self, bg=BG_RED)
         self.content.pack(fill="both", expand=True)
         self.tabs = {}
 
-        # Instantiate UI handlers
         self.asset_ui = AssetUI(self)
         self.browse_ui = BrowseUI(self)
 
-        # Build tabs
         self.tabs["ASSETS"] = self.asset_ui.build_tab(self.content)
         self.tabs["BROWSE"] = self.browse_ui.build_tab(self.content)
         self._build_upload()
 
         self.show_tab("ASSETS")
 
-        # Status bar
         status_frame = tk.Frame(self, bg=DARK_RED)
         status_frame.pack(fill="x", padx=12, pady=4)
         self.status_var = tk.StringVar(value="Ready  •  Ctrl+R  •  F11")
@@ -529,48 +528,29 @@ class FloodGate(ctk.CTk):
         self.progress_bar.set(value)
 
     def _start_live_polling(self):
-        if not self._live_polling:
-            self._live_polling = True
-            self._poll_counter = 0
-            self._poll_browse()
+        pass
 
     def _poll_browse(self):
-        if not self._live_polling:
-            return
-        self._poll_counter += 1
-        if self._poll_counter > 40:
-            self._stop_live_polling()
-            self._set_status("⚠️ Render timed out or crashed – check terminal.")
-            return
-        done_file = self.BASE_DIR / "_render_complete.txt"
-        if done_file.exists():
-            self._stop_live_polling()
-            self.browse_ui._refresh_browse()
-            self._set_status("✅ Render complete – browse updated.")
-            done_file.unlink(missing_ok=True)
-            return
-        try:
-            current_count = len(list(self.OUTPUT_DIR.glob("*.mp4")))
-            if not hasattr(self, '_last_video_count'):
-                self._last_video_count = current_count
-            elif current_count != self._last_video_count:
-                self._last_video_count = current_count
-                self.browse_ui._refresh_browse()
-        except:
-            pass
-        self.after(1500, self._poll_browse)
+        pass
 
     def _stop_live_polling(self):
-        self._live_polling = False
-        self._poll_counter = 0
-        if hasattr(self, '_last_video_count'):
-            del self._last_video_count
+        pass
+
+    def _remixer_finished(self, return_code):
+        if return_code == 0:
+            self.asset_ui.log("=== Remixer finished successfully ===")
+            self._set_status("✅ Remixer complete.")
+            self.browse_ui._refresh_browse()
+        else:
+            self.asset_ui.log(f"=== Remixer exited with code {return_code} ===")
+            self._set_status(f"⚠️ Remixer failed (code {return_code})")
 
     def _run_remixer(self):
         rp = self.BASE_DIR / "remixer.py"
         if not rp.exists():
             messagebox.showerror("Error", "remixer.py not found.")
             return
+
         self._save_proj()
         self.config["num_renders"] = self.asset_ui.render_count_var.get()
         self.config["caption_font"] = self.asset_ui.cap_font_var.get()
@@ -588,21 +568,58 @@ class FloodGate(ctk.CTk):
         self.config["settings"]["format"] = fmt
         self.config["settings"]["clip_length"] = self.len_var.get()
         self._save_config()
-        bp = self.BASE_DIR / "_run_remixer.bat"
-        with open(bp, "w", encoding="ascii") as f:
-            f.write("@echo off\ntitle FLOODGATE TERMINAL\necho.\necho   ====================================\necho     FLOODGATE - RENDERING\necho   ====================================\necho.\n")
-            f.write(f'"{sys.executable}" "{rp}"\n')
-            f.write("echo.\necho   ====================================\necho     COMPLETE - Close this window.\necho   ====================================\necho.\n")
-            f.write(f'echo DONE > "{self.BASE_DIR}\\_render_complete.txt"\n')
-            f.write("pause\n")
-        done_file = self.BASE_DIR / "_render_complete.txt"
-        if done_file.exists():
-            done_file.unlink()
-        self._start_live_polling()
-        subprocess.Popen(["cmd", "/k", str(bp)], creationflags=subprocess.CREATE_NEW_CONSOLE)
-        self._set_status(f"Remixer launched — {self.config['num_renders']} renders.")
 
+        self.asset_ui.clear_log()
+        self.asset_ui.log("=== Starting remixer ===")
+        self.asset_ui.log(f"Rendering {self.config['num_renders']} clips...")
+        self.asset_ui.log(f"Format: {fmt}, Length: {self.config['settings']['clip_length']}s")
+
+        try:
+            env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
+            env["PYTHONIOENCODING"] = "utf-8"
+
+            creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            self._process = subprocess.Popen(
+                [sys.executable, "-u", str(rp)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                creationflags=creation_flags,
+                cwd=str(self.BASE_DIR),
+                env=env,
+                encoding='utf-8',
+                errors='replace'
+            )
+
+            def read_output():
+                try:
+                    for line in iter(self._process.stdout.readline, ''):
+                        if line:
+                            self.asset_ui.log(line.strip())
+                        else:
+                            break
+                except Exception as e:
+                    self.asset_ui.log(f"Log reader error: {e}")
+                finally:
+                    if self._process.stdout:
+                        self._process.stdout.close()
+                    return_code = self._process.wait()
+                    self.after(0, lambda: self._remixer_finished(return_code))
+
+            threading.Thread(target=read_output, daemon=True).start()
+            self._set_status(f"Remixer launched — {self.config['num_renders']} renders.")
+        except Exception as e:
+            self.asset_ui.log(f"ERROR: {e}")
+            self._set_status("Remixer failed to start.")
+
+    # ------------------------------------------------------------------
+    # Application close
+    # ------------------------------------------------------------------
     def on_close(self):
+        if self._process and self._process.poll() is None:
+            self._process.terminate()
         self._stop_live_polling()
         self._save_proj()
         self.destroy()
