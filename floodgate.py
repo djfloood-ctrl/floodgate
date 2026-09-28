@@ -19,6 +19,8 @@ PROJECTS_DIR = BASE_DIR / "projects"
 OUTPUT_DIR = BASE_DIR / "output"
 TRASH_DIR = BASE_DIR / "trash"
 META_PATH = BASE_DIR / "clip_meta.json"
+UPLOAD_QUEUE_PATH = BASE_DIR / "upload_queue.json"
+EXPORTS_DIR = BASE_DIR / "exports"
 LOGO_PATH = BASE_DIR / "floodgate_icon.png"
 
 class FloodGate(ctk.CTk):
@@ -46,7 +48,7 @@ class FloodGate(ctk.CTk):
         self.templates = self.config.get("templates", dict(DEFAULT_TEMPLATES))
         self.projects = ProjectManager(PROJECTS_DIR)
         self.meta = ClipMeta(META_PATH, OUTPUT_DIR, TRASH_DIR)
-        self.upload = UploadManager()
+        self.upload = UploadManager(UPLOAD_QUEUE_PATH)
         self.fonts_all = scan_fonts()
         self.fonts_ok = valid_fonts(self.fonts_all)
         self.listboxes = {}
@@ -89,8 +91,17 @@ class FloodGate(ctk.CTk):
     # Configuration
     # ------------------------------------------------------------------
     def _load_config(self):
-        c = load_json(CONFIG_PATH, {"act_a_videos":[], "act_b_videos":[], "act_a_music":[], "act_b_music":[], "voiceover_clips":[], "logo":"", "num_renders":10, "caption_font":"Impact", "captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"}, "settings":{"preview_mode":True, "music_volume":0.35, "format":"Reel / TikTok (9:16)", "clip_length":15}})
-        if "caption_font" not in c: c["caption_font"]="Impact"
+        # config.json is personal (asset paths) and not tracked in git; a fresh
+        # checkout starts from config.example.json.
+        defaults = load_json(BASE_DIR / "config.example.json", {"captions":{"act_a":"Without DJ FLOOD","act_b":"With DJ FLOOD"}, "settings":{"preview_mode":True, "music_volume":0.35, "format":"Reel / TikTok (9:16)", "clip_length":15}})
+        c = load_json(CONFIG_PATH, defaults)
+        for key in SLOTS:
+            c.setdefault(key, [])
+        c.setdefault("logo", "")
+        c.setdefault("num_renders", 10)
+        c.setdefault("caption_font", "Impact")
+        c.setdefault("captions", dict(defaults.get("captions", {})))
+        c.setdefault("settings", {})
         return c
 
     def _save_config(self):
@@ -183,6 +194,7 @@ class FloodGate(ctk.CTk):
         self._build_upload()
 
         self.show_tab("ASSETS")
+        self._show_template(self.template_var.get())
 
         status_frame = tk.Frame(self, bg=DARK_RED)
         status_frame.pack(fill="x", padx=12, pady=4)
@@ -212,16 +224,10 @@ class FloodGate(ctk.CTk):
         hdr = tk.Frame(tab, bg=BG_RED)
         hdr.pack(fill="x", padx=20, pady=(14,8))
         tk.Label(hdr, text="UPLOAD QUEUE", font=self.fonts["title"], fg=WHITE, bg=BG_RED).pack(side="left")
-        st = tk.Frame(tab, bg=BG_RED)
-        st.pack(fill="x", padx=20, pady=(0,8))
-        self.ig_lbl = tk.Label(st, text="IG: NOT PAIRED", font=("Courier New",7,"bold"), fg=GRAY, bg=BG_RED)
-        self.ig_lbl.pack(side="left", padx=(0,14))
-        HoverButton(st, text="PAIR IG", font=("Courier New",7,"bold"), fg=BLACK, bg=WHITE, bd=0, padx=8, pady=1,
-                    command=lambda: (setattr(self.upload, 'paired_ig', True), self.ig_lbl.config(text="IG: PAIRED", fg=UPLOAD_GREEN), messagebox.showinfo("Instagram", "Paired!"))).pack(side="left", padx=2)
-        self.tt_lbl = tk.Label(st, text="TT: NOT PAIRED", font=("Courier New",7,"bold"), fg=GRAY, bg=BG_RED)
-        self.tt_lbl.pack(side="left", padx=(14,0))
-        HoverButton(st, text="PAIR TT", font=("Courier New",7,"bold"), fg=BLACK, bg=WHITE, bd=0, padx=8, pady=1,
-                    command=lambda: (setattr(self.upload, 'paired_tt', True), self.tt_lbl.config(text="TT: PAIRED", fg=UPLOAD_GREEN), messagebox.showinfo("TikTok", "Paired!"))).pack(side="left", padx=2)
+        tk.Label(tab, text="Queue clips from Browse with the ↑ button, then EXPORT ALL: each clip is copied with its caption (and subtitles)\n"
+                           "into a ready-to-post folder. Post from your phone or browser. Direct posting to Instagram/TikTok needs\n"
+                           "developer API access and isn't built yet.",
+                 font=self.fonts["small"], fg=GRAY, bg=BG_RED, justify="left", anchor="w").pack(fill="x", padx=20, pady=(0,8))
         self.ulb_frame = ctk.CTkScrollableFrame(tab, fg_color=DARK_RED)
         self.ulb_frame.pack(fill="both", expand=True, padx=20, pady=(6,6))
         self.ulb = tk.Listbox(self.ulb_frame, bg=DARK_RED, fg=WHITE, selectbackground=WHITE, selectforeground=BLACK, font=self.fonts["body"], bd=0, height=20)
@@ -229,13 +235,17 @@ class FloodGate(ctk.CTk):
         br = tk.Frame(tab, bg=BG_RED)
         br.pack(fill="x", padx=20, pady=(0,14))
         HoverButton(br, text="REMOVE", font=("Courier New",8,"bold"), fg=BLACK, bg=ACCENT, bd=0, padx=10, pady=4, command=self._remove_draft).pack(side="left")
-        HoverButton(br, text="UPLOAD ALL", font=("Courier New",8,"bold"), fg=BLACK, bg=UPLOAD_GREEN, bd=0, padx=10, pady=4, command=self._upload_all).pack(side="right")
+        HoverButton(br, text="COPY CAPTION", font=("Courier New",8,"bold"), fg=BLACK, bg=WHITE, bd=0, padx=10, pady=4, command=self._copy_caption).pack(side="left", padx=6)
+        HoverButton(br, text="EXPORT ALL", font=("Courier New",8,"bold"), fg=BLACK, bg=UPLOAD_GREEN, bd=0, padx=10, pady=4, command=self._export_all).pack(side="right")
+        HoverButton(br, text="OPEN EXPORTS", font=("Courier New",8,"bold"), fg=BLACK, bg=WHITE, bd=0, padx=10, pady=4,
+                    command=lambda: (EXPORTS_DIR.mkdir(parents=True, exist_ok=True), open_path(EXPORTS_DIR))).pack(side="right", padx=6)
         self._refresh_upload()
 
     def _refresh_upload(self):
         self.ulb.delete(0, "end")
         for d in self.upload.get():
-            self.ulb.insert("end", f"  [{d['status'].upper()}] {Path(d['video']).name[:45]} → {','.join(d['platforms'])}")
+            cap = d["caption"].replace("\n", " ")
+            self.ulb.insert("end", f"  [{d['status'].upper()}] {Path(d['video']).name[:40]}  —  {cap[:50]}{'…' if len(cap) > 50 else ''}")
 
     def _remove_draft(self):
         sel = self.ulb.curselection()
@@ -243,15 +253,27 @@ class FloodGate(ctk.CTk):
             self.upload.remove(sel[0])
             self._refresh_upload()
 
-    def _upload_all(self):
-        drafts = self.upload.get()
-        if not drafts:
-            messagebox.showinfo("Queue", "No drafts.")
+    def _copy_caption(self):
+        sel = self.ulb.curselection()
+        if not sel:
+            self._set_status("Select a clip in the queue first.")
             return
-        for d in drafts:
-            d["status"] = "uploaded"
+        self.clipboard_clear()
+        self.clipboard_append(self.upload.get()[sel[0]]["caption"])
+        self._set_status("Caption copied to the clipboard.")
+
+    def _export_all(self):
+        if not any(d["status"] == "queued" for d in self.upload.get()):
+            messagebox.showinfo("Export", "Nothing new to export. Queue clips from the Browse tab with the ↑ button.")
+            return
+        folder, count, missing = self.upload.export(EXPORTS_DIR)
         self._refresh_upload()
-        messagebox.showinfo("Upload", f"{len(drafts)} uploaded!")
+        msg = f"Exported {count} clip(s) with captions to:\n{folder}"
+        if missing:
+            msg += "\n\nSkipped (file no longer exists):\n" + "\n".join(missing)
+        messagebox.showinfo("Export", msg)
+        if count:
+            open_path(folder)
 
     # ------------------------------------------------------------------
     # Project / Settings / Templates
@@ -272,6 +294,7 @@ class FloodGate(ctk.CTk):
             self.config["caption_font"] = proj.get("settings", {}).get("caption_font", "Impact")
             self.fmt_var.set(proj.get("settings", {}).get("format", "Reel / TikTok (9:16)"))
             self.template_var.set(proj.get("settings", {}).get("template", "SAD CLIP / HAPPY CLIP"))
+            self._show_template(self.template_var.get())
             self.len_var.set(proj.get("settings", {}).get("clip_length", 30))
             self.projects.current = choice
             self._refresh_all()
@@ -332,21 +355,12 @@ class FloodGate(ctk.CTk):
         self._save_config()
 
     def _show_template(self, template_name):
-        for key, meta in SLOTS.items():
-            if key not in self.listboxes:
-                continue
-            lb = self.listboxes[key]
-            card = lb.master
-            if key == "longform_source" or meta.get("subfolder") == "assets/longform":
-                if template_name == "LONGFORM CLIPS":
-                    card.pack(fill="x", pady=(0,6), ipady=4)
-                else:
-                    card.pack_forget()
-            elif key in ["act_a_videos","act_b_videos","act_a_music","act_b_music"]:
-                if template_name == "SAD CLIP / HAPPY CLIP":
-                    card.pack(fill="x", pady=(0,6), ipady=4)
-                else:
-                    card.pack_forget()
+        """LONGFORM CLIPS uses the Longform Source slot; every other template uses the Act A/B slots."""
+        ui = self.asset_ui
+        longform = template_name == "LONGFORM CLIPS"
+        show, hide = (ui.longform_frame, ui.acts_frame) if longform else (ui.acts_frame, ui.longform_frame)
+        hide.pack_forget()
+        show.pack(fill="x", padx=80 if longform else 60, pady=(4,0), before=ui.center_frame)
 
     def _save_template(self):
         name = simpledialog.askstring("Add Template", "Template name:")
@@ -563,18 +577,60 @@ class FloodGate(ctk.CTk):
     def _stop_live_polling(self):
         pass
 
-    def _remixer_finished(self, return_code):
+    def _job_running(self):
+        if self._process and self._process.poll() is None:
+            self._set_status("A job is already running — wait for it to finish.")
+            return True
+        return False
+
+    def _job_finished(self, name, return_code):
         if return_code == 0:
-            self.asset_ui.log("=== Remixer finished successfully ===")
-            self._set_status("✅ Remixer complete.")
+            self.asset_ui.log(f"=== {name} finished successfully ===")
+            self._set_status(f"✅ {name} complete.")
             self.browse_ui._refresh_browse()
         else:
-            self.asset_ui.log(f"=== Remixer exited with code {return_code} ===")
-            self._set_status(f"⚠️ Remixer failed (code {return_code})")
+            self.asset_ui.log(f"=== {name} exited with code {return_code} ===")
+            self._set_status(f"⚠️ {name} failed (code {return_code})")
+
+    def _run_script(self, script, args, name):
+        """Run a helper script in the background and stream its output into the log panel."""
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+        env["PYTHONIOENCODING"] = "utf-8"
+        creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        self._process = subprocess.Popen(
+            [sys.executable, "-u", str(script), *args],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            creationflags=creation_flags,
+            cwd=str(self.BASE_DIR),
+            env=env,
+            encoding='utf-8',
+            errors='replace'
+        )
+        process = self._process
+
+        def read_output():
+            try:
+                for line in iter(process.stdout.readline, ''):
+                    if line:
+                        self.asset_ui.log(line.rstrip())
+                    else:
+                        break
+            except Exception as e:
+                self.asset_ui.log(f"Log reader error: {e}")
+            finally:
+                if process.stdout:
+                    process.stdout.close()
+                return_code = process.wait()
+                self.after(0, lambda: self._job_finished(name, return_code))
+
+        threading.Thread(target=read_output, daemon=True).start()
 
     def _run_remixer(self):
-        if self._process and self._process.poll() is None:
-            self._set_status("Remixer is already running.")
+        if self._job_running():
             return
         rp = self.BASE_DIR / "remixer.py"
         if not rp.exists():
@@ -587,6 +643,8 @@ class FloodGate(ctk.CTk):
         self.config["captions"]["act_a"] = self.asset_ui.cap_a_var.get()
         self.config["captions"]["act_b"] = self.asset_ui.cap_b_var.get()
         self.config["settings"]["preview_mode"] = self.asset_ui.preview_var.get()
+        self.config["settings"]["template"] = self.template_var.get()
+        self.asset_ui._save_subtitle_settings()
         fmt = self.fmt_var.get()
         if fmt == "Custom":
             pass
@@ -605,44 +663,40 @@ class FloodGate(ctk.CTk):
         self.asset_ui.log(f"Format: {fmt}, Length: {self.config['settings']['clip_length']}s")
 
         try:
-            env = os.environ.copy()
-            env["PYTHONUNBUFFERED"] = "1"
-            env["PYTHONIOENCODING"] = "utf-8"
-
-            creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-            self._process = subprocess.Popen(
-                [sys.executable, "-u", str(rp)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                creationflags=creation_flags,
-                cwd=str(self.BASE_DIR),
-                env=env,
-                encoding='utf-8',
-                errors='replace'
-            )
-
-            def read_output():
-                try:
-                    for line in iter(self._process.stdout.readline, ''):
-                        if line:
-                            self.asset_ui.log(line.strip())
-                        else:
-                            break
-                except Exception as e:
-                    self.asset_ui.log(f"Log reader error: {e}")
-                finally:
-                    if self._process.stdout:
-                        self._process.stdout.close()
-                    return_code = self._process.wait()
-                    self.after(0, lambda: self._remixer_finished(return_code))
-
-            threading.Thread(target=read_output, daemon=True).start()
+            self._run_script(rp, [], "Remixer")
             self._set_status(f"Remixer launched — {self.config['num_renders']} renders.")
         except Exception as e:
             self.asset_ui.log(f"ERROR: {e}")
             self._set_status("Remixer failed to start.")
+
+    def _run_subtitles(self):
+        if self._job_running():
+            return
+        sp = self.BASE_DIR / "subtitles.py"
+        if not sp.exists():
+            messagebox.showerror("Error", "subtitles.py not found.")
+            return
+        src = filedialog.askopenfilename(
+            title="Choose a video or audio file to subtitle",
+            filetypes=[("Video / Audio", "*.mp4 *.mov *.mkv *.avi *.webm *.mp3 *.wav *.m4a *.aac"), ("All files", "*.*")])
+        if not src:
+            return
+        ui = self.asset_ui
+        style = SUBTITLE_STYLES[ui.sub_style_var.get()]
+        model = SUBTITLE_MODELS[ui.sub_model_var.get()]
+        args = [src, "--style", style, "--model", model, "--font", ui.cap_font_var.get()]
+        if ui.sub_srt_only_var.get():
+            args.append("--srt-only")
+        ui._save_subtitle_settings()
+
+        ui.clear_log()
+        ui.log(f"=== Subtitles: {Path(src).name} ===")
+        try:
+            self._run_script(sp, args, "Subtitles")
+            self._set_status(f"Subtitling {Path(src).name}...")
+        except Exception as e:
+            ui.log(f"ERROR: {e}")
+            self._set_status("Subtitles failed to start.")
 
     # ------------------------------------------------------------------
     # Application close

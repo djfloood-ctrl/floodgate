@@ -1,0 +1,28 @@
+{
+  "act_a_videos": [],
+  "act_b_videos": [],
+  "act_a_music": [],
+  "act_b_music": [],
+  "voiceover_clips": [],
+  "longform_source": [],
+  "logo": "",
+  "num_renders": 10,
+  "caption_font": "Impact",
+  "captions": {
+    "act_a": "Without DJ FLOOD",
+    "act_b": "With DJ FLOOD"
+  },
+  "settings": {
+    "preview_mode": true,
+    "music_volume": 0.35,
+    "format": "Reel / TikTok (9:16)",
+    "target_w": 1080,
+    "target_h": 1920,
+    "target_fps": 30,
+    "clip_length": 15,
+    "template": "SAD CLIP / HAPPY CLIP",
+    "auto_subtitles": true,
+    "subtitle_style": "Pop (word highlight)",
+    "subtitle_model": "Balanced"
+  }
+}

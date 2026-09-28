@@ -362,7 +362,7 @@
     </div>
     <div class="feature-item">
       <span class="feat-label">Template System</span>
-      <p>Switch between render templates &mdash; SAD CLIP / HAPPY CLIP for contrast content, LONGFORM CLIPS for podcasts and extended source material. Custom templates can be created and removed; default templates are protected. <em>The remixer currently renders the SAD CLIP / HAPPY CLIP structure only; LONGFORM rendering is planned.</em></p>
+      <p>Switch between render templates &mdash; SAD CLIP / HAPPY CLIP for contrast content, LONGFORM CLIPS for podcasts and extended source material. Custom templates can be created and removed; default templates are protected. LONGFORM CLIPS cuts sentence-aligned excerpts from a long source and fits them to the output format over a blurred copy of the frame.</p>
     </div>
     <div class="feature-item">
       <span class="feat-label">Asset Management</span>
@@ -397,8 +397,12 @@
       <p>Slider + quick-select buttons (5, 10, 25, 50, 100) to set render count. Ctrl+R launches the remixer from anywhere in the app. Renders run in a background process so the UI remains responsive, and a second render cannot be started while one is in progress.</p>
     </div>
     <div class="feature-item">
-      <span class="feat-label">Upload Queue (Planned)</span>
-      <p>Rendered clips can be queued for Instagram and TikTok from the Browse view. Platform pairing and publishing are not yet connected to either service; the queue currently serves as a staging list.</p>
+      <span class="feat-label">Automatic Subtitles</span>
+      <p>Every render is subtitled automatically. Speech is transcribed locally with Whisper and burned in as Pop captions, with the spoken word highlighted, or as Classic bottom-line captions, plus an .srt file. Any other video or audio file, including full podcasts and interviews, can be subtitled on demand. Transcripts are cached per file, so later excerpts reuse them instantly.</p>
+    </div>
+    <div class="feature-item">
+      <span class="feat-label">Upload Queue</span>
+      <p>Clips are queued with captions from the Browse view and exported into a dated, ready-to-post folder with each clip's caption and subtitle files. Direct publishing to Instagram and TikTok is planned and requires platform API access.</p>
     </div>
   </div>
 
@@ -451,7 +455,7 @@
     </div>
     <div class="industry-row">
       <div class="ind-label">Podcasts</div>
-      <div class="ind-desc">Once longform rendering is available, the Longform Clips template will extract highlight clips from full episodes and pair them with branded visuals and voiceovers.</div>
+      <div class="ind-desc">The Longform Clips template cuts sentence-aligned clips from full episodes, fits them to vertical format and subtitles them automatically, with an optional branded logo and voiceover outro.</div>
     </div>
     <div class="industry-row">
       <div class="ind-label">Sports Media</div>
