@@ -45,6 +45,10 @@ DEFAULT_TEMPLATES = {
 
 CLIP_LENGTHS = {"2 secs":2,"5 secs":5,"10 secs":10,"15 secs":15,"30 secs":30,"60 secs":60,"90 secs":90,"3 min":180,"5 min":300}
 
+# Snapshots of the built-in presets; user presets are layered on top from config.json
+BUILTIN_FORMATS = frozenset(FORMAT_PRESETS)
+BUILTIN_LENGTHS = frozenset(CLIP_LENGTHS)
+
 SLOTS = {
     "act_a_videos": {"label":"Act A — Sad / Bleak Clips","subfolder":"assets/act_a","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"Sad, bleak, melancholic, rainy day footage","side":"left"},
     "act_b_videos": {"label":"Act B — Heat / Energy Clips","subfolder":"assets/act_b","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"Hype, energy, heat, crowds, lights, action","side":"right"},

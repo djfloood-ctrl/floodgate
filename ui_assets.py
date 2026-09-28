@@ -319,7 +319,9 @@ class AssetUI:
         lb.delete(0, "end")
         for path in self.config.get(key, []):
             full = Path(path)
-            sz = f"[{human_size(full.stat().st_size)}]"
+            if not full.is_absolute():
+                full = self.app.BASE_DIR / full
+            sz = f"[{human_size(full.stat().st_size)}]" if full.exists() else "[MISSING]"
             name = full.name
             if len(name) > 38:
                 name = name[:18] + "..." + name[-15:]

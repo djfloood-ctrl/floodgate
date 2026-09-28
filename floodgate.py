@@ -1,5 +1,5 @@
 """
-FLOODGATE v2.2 — Working Build (FIXED & MODULAR)
+FLOODGATE v2.3
 Main application – assets and browse are split into separate UI modules.
 """
 
@@ -41,6 +41,8 @@ class FloodGate(ctk.CTk):
             "button": ("Courier New", 8, "bold"),
         }
         self.config = self._load_config()
+        FORMAT_PRESETS.update(self.config.get("custom_formats", {}))
+        CLIP_LENGTHS.update(self.config.get("custom_lengths", {}))
         self.templates = self.config.get("templates", dict(DEFAULT_TEMPLATES))
         self.projects = ProjectManager(PROJECTS_DIR)
         self.meta = ClipMeta(META_PATH, OUTPUT_DIR, TRASH_DIR)
@@ -261,10 +263,10 @@ class FloodGate(ctk.CTk):
         proj = self.projects.get(choice)
         if proj:
             a = proj.get("assets", {})
-            for key in ["act_a_videos","act_b_videos","act_a_music","act_b_music","voiceover_clips"]:
-                self.config[key] = a.get(key, [])
+            for key in SLOTS:
+                self.config[key] = list(a.get(key, []))
             self.config["logo"] = a.get("logo", "")
-            self.config["captions"] = proj.get("captions", {})
+            self.config["captions"] = dict(proj.get("captions", {}))
             self.config["settings"].update(proj.get("settings", {}))
             self.config["num_renders"] = proj.get("settings", {}).get("num_renders", 10)
             self.config["caption_font"] = proj.get("settings", {}).get("caption_font", "Impact")
@@ -285,10 +287,11 @@ class FloodGate(ctk.CTk):
                     "act_a_music": self.config.get("act_a_music", []),
                     "act_b_music": self.config.get("act_b_music", []),
                     "voiceover_clips": self.config.get("voiceover_clips", []),
+                    "longform_source": self.config.get("longform_source", []),
                     "logo": self.config.get("logo", "")
                 },
-                "captions": self.config.get("captions", {}),
-                "settings": self.config.get("settings", {})
+                "captions": dict(self.config.get("captions", {})),
+                "settings": dict(self.config.get("settings", {}))
             }
             data["settings"]["num_renders"] = self.config.get("num_renders", 10)
             data["settings"]["caption_font"] = self.config.get("caption_font", "Impact")
@@ -440,9 +443,19 @@ class FloodGate(ctk.CTk):
         fv = tk.IntVar(value=30)
         tk.Entry(ff, textvariable=fv, font=("Courier New", 10), bg="#6B1010", fg=WHITE, insertbackground=WHITE, bd=0, width=8, justify="center").pack(side="right")
         def save():
-            self.config["settings"]["target_w"] = wv.get()
-            self.config["settings"]["target_h"] = hv.get()
-            self.config["settings"]["target_fps"] = fv.get()
+            try:
+                w, h, fps = wv.get(), hv.get(), fv.get()
+            except tk.TclError:
+                messagebox.showerror("Custom Format", "Width, height and FPS must be whole numbers.", parent=dialog)
+                return
+            if not (16 <= w <= 7680 and 16 <= h <= 7680 and 1 <= fps <= 120):
+                messagebox.showerror("Custom Format", "Width/height must be 16-7680 px and FPS 1-120.", parent=dialog)
+                return
+            # libx264 with yuv420p needs even dimensions
+            w, h = w - w % 2, h - h % 2
+            self.config["settings"]["target_w"] = w
+            self.config["settings"]["target_h"] = h
+            self.config["settings"]["target_fps"] = fps
             self.config["settings"]["format"] = "Custom"
             self.fmt_var.set("Custom")
             self._save_config()
@@ -461,9 +474,14 @@ class FloodGate(ctk.CTk):
         name = simpledialog.askstring("Save Format", "Preset name (e.g. 'My Custom 4K'):")
         if not name:
             return
+        if name in BUILTIN_FORMATS:
+            messagebox.showinfo("Exists", "A built-in format already uses that name.")
+            return
         FORMAT_PRESETS[name] = {"w": self.config["settings"].get("target_w", 1080),
                                  "h": self.config["settings"].get("target_h", 1920),
                                  "fps": self.config["settings"].get("target_fps", 30)}
+        self.config.setdefault("custom_formats", {})[name] = FORMAT_PRESETS[name]
+        self._save_config()
         menu = self.fmt_menu["menu"]
         menu.delete(0, "end")
         for f in FORMAT_PRESETS.keys():
@@ -473,11 +491,13 @@ class FloodGate(ctk.CTk):
 
     def _remove_format_preset(self):
         name = self.fmt_var.get()
-        if name in ["Reel / TikTok (9:16)", "Square Post (1:1)", "Widescreen (16:9)", "Cinematic (21:9)", "Custom"]:
+        if name in BUILTIN_FORMATS:
             messagebox.showinfo("Protected", "Cannot remove default formats.")
             return
         if messagebox.askyesno("Remove", f"Delete format '{name}'?"):
             del FORMAT_PRESETS[name]
+            self.config.get("custom_formats", {}).pop(name, None)
+            self._save_config()
             menu = self.fmt_menu["menu"]
             menu.delete(0, "end")
             for f in FORMAT_PRESETS.keys():
@@ -489,7 +509,12 @@ class FloodGate(ctk.CTk):
         name = simpledialog.askstring("Save Length", "Preset name (e.g. '45 secs'):")
         if not name:
             return
+        if name in BUILTIN_LENGTHS:
+            messagebox.showinfo("Exists", "A built-in length already uses that name.")
+            return
         CLIP_LENGTHS[name] = self.len_var.get()
+        self.config.setdefault("custom_lengths", {})[name] = CLIP_LENGTHS[name]
+        self._save_config()
         menu = self.len_menu["menu"]
         menu.delete(0, "end")
         for k, v in CLIP_LENGTHS.items():
@@ -500,7 +525,7 @@ class FloodGate(ctk.CTk):
         current = self.len_var.get()
         to_remove = None
         for k, v in CLIP_LENGTHS.items():
-            if v == current and k not in ["2 secs", "5 secs", "10 secs", "15 secs", "30 secs", "60 secs", "90 secs", "3 min", "5 min"]:
+            if v == current and k not in BUILTIN_LENGTHS:
                 to_remove = k
                 break
         if not to_remove:
@@ -508,6 +533,8 @@ class FloodGate(ctk.CTk):
             return
         if messagebox.askyesno("Remove", f"Delete length '{to_remove}'?"):
             del CLIP_LENGTHS[to_remove]
+            self.config.get("custom_lengths", {}).pop(to_remove, None)
+            self._save_config()
             menu = self.len_menu["menu"]
             menu.delete(0, "end")
             for k, v in CLIP_LENGTHS.items():
@@ -546,6 +573,9 @@ class FloodGate(ctk.CTk):
             self._set_status(f"⚠️ Remixer failed (code {return_code})")
 
     def _run_remixer(self):
+        if self._process and self._process.poll() is None:
+            self._set_status("Remixer is already running.")
+            return
         rp = self.BASE_DIR / "remixer.py"
         if not rp.exists():
             messagebox.showerror("Error", "remixer.py not found.")
