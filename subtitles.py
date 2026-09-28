@@ -38,6 +38,11 @@ TRANSCRIPT_DIR = BASE_DIR / "transcripts"
 MODELS = ["tiny", "base", "small", "medium", "large-v3-turbo", "large-v3"]
 STYLES = ["pop", "classic"]
 
+# App labels -> values. "Best" (large-v3-turbo) handles noisy audio best and is
+# faster than "Accurate" (medium).
+SUBTITLE_STYLES = {"Pop (word highlight)": "pop", "Classic (bottom lines)": "classic"}
+SUBTITLE_MODELS = {"Fast": "base", "Balanced": "small", "Accurate": "medium", "Best": "large-v3-turbo"}
+
 # ASS colours are &HAABBGGRR
 WHITE     = "&H00FFFFFF"
 BLACK     = "&H00000000"
@@ -45,6 +50,8 @@ HIGHLIGHT = "&H0000E5FF"   # warm yellow
 SHADOW    = "&H80000000"
 
 AUDIO_ONLY_SIZE = (1080, 1920)
+
+SENTENCE_END = re.compile(r"[.!?…]$")
 
 
 # ─────────────────────────────────────────────
@@ -86,14 +93,40 @@ def _cache_path(src, model, language):
     return TRANSCRIPT_DIR / f"{Path(src).stem[:40]}_{hashlib.sha1(key.encode()).hexdigest()[:12]}.json"
 
 
-def transcribe(src, model="small", language=None, log=print):
+class SubtitlesUnavailable(RuntimeError):
+    """faster-whisper is not installed."""
+
+
+INSTALL_HINT = "Install it with:  py -m pip install faster-whisper"
+
+# Loaded models are reused for the whole process (a batch render subtitles every
+# clip with the same model), and once the GPU has failed we stay on the CPU.
+_loaded_models = {}
+_force_cpu = False
+
+
+def _get_model(model, log):
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        raise SubtitlesUnavailable(f"Subtitles need the faster-whisper package. {INSTALL_HINT}")
+    device = "cpu" if _force_cpu else "auto"
+    if (model, device) not in _loaded_models:
+        log(f"🧠 Loading Whisper model '{model}' (downloads once on first use)...")
+        _loaded_models[(model, device)] = _load_model(WhisperModel, model, device)
+    return _loaded_models[(model, device)]
+
+
+def transcribe(src, model="small", language=None, log=print, use_cache=True, quiet=False):
     """
-    Transcribe the whole file once and cache it, so any number of clips
-    cut from the same podcast or interview reuse the same transcript.
+    Transcribe a file. With use_cache, the whole file is transcribed once and
+    cached, so any number of clips cut from the same podcast or interview reuse
+    it. quiet skips the per-file progress lines (used for short render segments).
     Returns {"language": str, "words": [{"w": str, "s": float, "e": float}, ...]}.
     """
-    cache = _cache_path(src, model, language)
-    if cache.exists():
+    global _force_cpu
+    cache = _cache_path(src, model, language) if use_cache else None
+    if cache and cache.exists():
         with open(cache, "r", encoding="utf-8") as f:
             data = json.load(f)
         if data.get("words"):
@@ -101,35 +134,29 @@ def transcribe(src, model="small", language=None, log=print):
             return data
         cache.unlink()  # an empty transcript is never worth reusing
 
-    try:
-        from faster_whisper import WhisperModel
-    except ImportError:
-        log("❌ Subtitles need the faster-whisper package.")
-        log("   Install it with:  py -m pip install faster-whisper")
-        sys.exit(2)
-
     duration, _ = probe(src)
-    log(f"🧠 Loading Whisper model '{model}' (downloads once on first use)...")
+    progress = (lambda msg: None) if quiet else log
     try:
-        whisper = _load_model(WhisperModel, model, "auto")
-        log(f"🎙️  Transcribing {Path(src).name} ({duration / 60:.1f} min)...")
-        words, info = _transcribe_with_retry(whisper, src, language, duration, log)
+        whisper = _get_model(model, log)
+        progress(f"🎙️  Transcribing {Path(src).name} ({duration / 60:.1f} min)...")
+        words, info = _transcribe_with_retry(whisper, src, language, duration, progress)
     except RuntimeError as e:
         # An NVIDIA GPU without the CUDA libraries (cuBLAS/cuDNN) fails only once
         # transcription starts, so retry the whole pass on the CPU.
-        if not re.search(r"cuda|cublas|cudnn", str(e), re.IGNORECASE):
+        if isinstance(e, SubtitlesUnavailable) or _force_cpu or not re.search(r"cuda|cublas|cudnn", str(e), re.IGNORECASE):
             raise
         log("⚠️  GPU libraries not available — using the CPU instead (slower).")
-        whisper = _load_model(WhisperModel, model, "cpu")
-        log(f"🎙️  Transcribing {Path(src).name} ({duration / 60:.1f} min)...")
-        words, info = _transcribe_with_retry(whisper, src, language, duration, log)
+        _force_cpu = True
+        whisper = _get_model(model, log)
+        progress(f"🎙️  Transcribing {Path(src).name} ({duration / 60:.1f} min)...")
+        words, info = _transcribe_with_retry(whisper, src, language, duration, progress)
 
     data = {"language": info.language, "model": model, "source": str(src), "words": words}
-    if words:
+    if cache and words:
         TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
         with open(cache, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)
-    log(f"✅ Transcribed {len(words)} words (language: {info.language})")
+    progress(f"✅ Transcribed {len(words)} words (language: {info.language})")
     return data
 
 
@@ -182,12 +209,45 @@ def words_between(words, start=0.0, end=None):
     return out
 
 
+def shift_words(words, offset):
+    return [{"w": w["w"], "s": w["s"] + offset, "e": w["e"] + offset} for w in words]
+
+
+def pick_excerpt(words, duration, length, rng):
+    """
+    Choose a (start, end) window of about `length` seconds for a longform clip,
+    starting at the beginning of a sentence and ending at the end of one when the
+    transcript allows it, so clips don't cut people off mid-sentence.
+    """
+    if duration <= length or not words:
+        start = rng.uniform(0, max(duration - length, 0))
+        return start, min(start + length, duration)
+
+    target = rng.uniform(0, duration - length)
+    # First word that starts a sentence at or after the random point (within 20 s)
+    starts = [w for i, w in enumerate(words)
+              if w["s"] >= target and (i == 0 or SENTENCE_END.search(words[i - 1]["w"]))]
+    start_word = next((w for w in starts if w["s"] - target <= 20), None) \
+        or next((w for w in words if w["s"] >= target), None)
+    start = max(start_word["s"] - 0.15, 0) if start_word else target
+    start = min(start, duration - length)
+
+    limit = start + length
+    inside = [w for w in words if start <= w["s"] and w["e"] <= limit]
+    # Prefer ending on a sentence end in the last 40% of the window
+    enders = [w for w in inside if SENTENCE_END.search(w["w"]) and w["e"] >= start + length * 0.6]
+    if enders:
+        end = min(enders[-1]["e"] + 0.4, limit)
+    elif inside:
+        end = min(inside[-1]["e"] + 0.3, limit)
+    else:
+        end = limit
+    return start, end
+
+
 # ─────────────────────────────────────────────
 #  Grouping words into on-screen chunks
 # ─────────────────────────────────────────────
-
-SENTENCE_END = re.compile(r"[.!?…]$")
-
 
 def chunk_words(words, max_words, max_chars, max_gap):
     chunks, cur = [], []
@@ -299,6 +359,14 @@ def build_srt(words):
 #  Rendering
 # ─────────────────────────────────────────────
 
+def write_ass(words, style, size, font, name):
+    """Write an .ass subtitle file into transcripts/ and return its path."""
+    TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
+    ass = TRANSCRIPT_DIR / f"_{name}.ass"
+    ass.write_text(build_ass(words, style, size[0], size[1], font), encoding="utf-8")
+    return ass
+
+
 def burn(src, ass_path, out, size, start=0.0, duration=None):
     """
     Burn subtitles into `src`. ffmpeg runs inside the subtitle file's folder and
@@ -353,9 +421,7 @@ def subtitle_file(src, style="pop", model="small", language=None, font="Arial",
         return srt
 
     w, h = size or AUDIO_ONLY_SIZE
-    ass = TRANSCRIPT_DIR / f"_{out.stem}.ass"
-    TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
-    ass.write_text(build_ass(words, style, w, h, font), encoding="utf-8")
+    ass = write_ass(words, style, (w, h), font, out.stem)
     kind = "video" if size else "audio → waveform video"
     log(f"🔥 Burning '{style}' subtitles ({kind}, {w}x{h})...")
     try:
@@ -396,6 +462,10 @@ def main(argv=None):
         result = subtitle_file(a.input, style=a.style, model=a.model, language=a.language,
                                font=a.font or _default_font(), start=a.start, end=a.end,
                                srt_only=a.srt_only, output=a.output)
+    except SubtitlesUnavailable:
+        print("❌ Subtitles need the faster-whisper package.")
+        print(f"   {INSTALL_HINT}")
+        return 2
     except (RuntimeError, ValueError) as e:
         print(f"❌ {e}")
         return 1

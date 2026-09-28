@@ -34,7 +34,8 @@ class AssetUI:
         fb.pack_propagate(False)
 
         tk.Label(fb, text="TEMPLATE:", font=("Courier New",8,"bold"), fg=ACCENT, bg=DARK_RED).pack(side="left", padx=(10,4))
-        self.app.template_var = tk.StringVar(value="SAD CLIP / HAPPY CLIP")
+        saved_template = self.config.get("settings", {}).get("template")
+        self.app.template_var = tk.StringVar(value=saved_template if saved_template in self.app.templates else "SAD CLIP / HAPPY CLIP")
         self.app.template_menu = tk.OptionMenu(fb, self.app.template_var, *self.app.templates.keys(), command=self.app._on_template_change)
         self.app.template_menu.config(font=self.app.fonts["body"], bg=DARK_RED, fg=WHITE, activebackground=CARD_BG, bd=0, highlightthickness=0)
         self.app.template_menu["menu"].config(font=self.app.fonts["body"], bg=CARD_BG, fg=WHITE, bd=0)
@@ -52,9 +53,10 @@ class AssetUI:
         self.app.len_menu["menu"].config(font=self.app.fonts["body"], bg=CARD_BG, fg=WHITE, bd=0)
         self.app.len_menu.pack(side="left", padx=2)
 
-        # Two columns
+        # Two columns (Sad / Happy acts)
         af = tk.Frame(sf, bg=BG_RED)
         af.pack(fill="x", padx=60, pady=(4,0))
+        self.acts_frame = af
         af.columnconfigure(0, weight=1)
         af.columnconfigure(1, weight=1)
         lc = tk.Frame(af, bg=BG_RED)
@@ -68,9 +70,14 @@ class AssetUI:
             else:
                 self._slot(rc, key, m)
 
+        # Longform source (shown instead of the acts for the LONGFORM CLIPS template)
+        self.longform_frame = tk.Frame(sf, bg=BG_RED)
+        self._slot(self.longform_frame, "longform_source", SLOTS["longform_source"])
+
         # Center
         ct = tk.Frame(sf, bg=BG_RED)
         ct.pack(fill="x", padx=80, pady=(4,0))
+        self.center_frame = ct
         self._slot(ct, "voiceover_clips", SLOTS["voiceover_clips"])
         self._logo_card(ct)
         self._settings_card(ct)
@@ -220,7 +227,7 @@ class AssetUI:
         card = tk.Frame(parent, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER, highlightcolor=BORDER)
         card.pack(fill="x", pady=(0,6), ipady=2)
         tk.Label(card, text="SUBTITLES", font=self.fonts["heading"], fg=WHITE, bg=CARD_BG).pack(pady=(8,0))
-        tk.Label(card, text="Auto-transcribe any video, podcast or interview and burn in captions",
+        tk.Label(card, text="Every render gets subtitles automatically; you can also subtitle any file",
                  font=self.fonts["small"], fg=GRAY, bg=CARD_BG).pack(pady=(0,6))
         settings = self.config.get("settings", {})
         opts = tk.Frame(card, bg=CARD_BG)
@@ -233,15 +240,26 @@ class AssetUI:
         self.sub_model_var = tk.StringVar(value=model if model in SUBTITLE_MODELS else "Balanced")
         for label, var, choices in [("STYLE:", self.sub_style_var, SUBTITLE_STYLES), ("ACCURACY:", self.sub_model_var, SUBTITLE_MODELS)]:
             tk.Label(opts, text=label, font=("Courier New",7,"bold"), fg=GRAY, bg=CARD_BG).pack(side="left", padx=(8,2))
-            m = tk.OptionMenu(opts, var, *choices.keys())
+            m = tk.OptionMenu(opts, var, *choices.keys(), command=lambda _v: self._save_subtitle_settings())
             m.config(font=self.fonts["body"], bg=DARK_RED, fg=WHITE, activebackground=CARD_BG, bd=0, highlightthickness=0)
             m["menu"].config(font=self.fonts["body"], bg=CARD_BG, fg=WHITE, bd=0)
             m.pack(side="left")
+        self.sub_auto_var = tk.BooleanVar(value=settings.get("auto_subtitles", True))
+        tk.Checkbutton(card, text="Auto-subtitle every render", variable=self.sub_auto_var, font=self.fonts["small"],
+                       fg=WHITE, bg=CARD_BG, selectcolor=DARK_RED, activebackground=CARD_BG, activeforeground=WHITE,
+                       command=self._save_subtitle_settings).pack()
         self.sub_srt_only_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(card, text="Only make the .srt file (no video)", variable=self.sub_srt_only_var, font=self.fonts["small"],
+        tk.Checkbutton(card, text="Only make the .srt file (manual subtitling)", variable=self.sub_srt_only_var, font=self.fonts["small"],
                        fg=WHITE, bg=CARD_BG, selectcolor=DARK_RED, activebackground=CARD_BG, activeforeground=WHITE).pack()
         HoverButton(card, text="CC  SUBTITLE A VIDEO…", font=("Helvetica Neue",10,"bold"), fg=BLACK, bg=WHITE, hover_bg=ACCENT, hover_fg=WHITE,
                     bd=0, padx=20, pady=5, cursor="hand2", command=self.app._run_subtitles).pack(pady=(4,8))
+
+    def _save_subtitle_settings(self):
+        s = self.config["settings"]
+        s["auto_subtitles"] = self.sub_auto_var.get()
+        s["subtitle_style"] = self.sub_style_var.get()
+        s["subtitle_model"] = self.sub_model_var.get()
+        self.app._save_config()
 
     # ------------------------------------------------------------------
     # Log methods

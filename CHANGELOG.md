@@ -13,13 +13,28 @@
 - New Subtitles panel on the Assets tab; the log panel is renamed Output Log and shows subtitle progress
 - Only one job, render or subtitles, runs at a time
 - Accuracy levels: Fast, Balanced, Accurate and Best. Best uses Whisper large-v3-turbo and is the most accurate on noisy audio
+- **Every render is subtitled automatically.** On by default, with an "Auto-subtitle every render" switch. Sad/Happy clips subtitle the Act A speech and the voiceover outro. A render without speech, or without faster-whisper installed, still completes.
+
+### Longform Clips template
+- The remixer now renders Longform Clips: random excerpts from long videos or podcasts in the new Longform Source slot
+- Excerpts start and end on sentence boundaries when a transcript is available
+- Video is fitted to the output format over a blurred copy of itself; audio-only sources get a waveform
+- Logo and voiceover outro when both are set; each source is transcribed once and reused for every clip's subtitles
+- The Assets tab switches between the Act A/B slots and the Longform Source slot with the template, including at startup
+
+### Upload queue
+- The fake Instagram/TikTok pairing and "upload" are replaced by a working export. **Export All** copies queued clips with a caption `.txt` and `.srt` each into a dated folder in `exports/`, then opens it
+- **Copy Caption** and **Open Exports** buttons; the queue is saved between sessions
+- Queuing a clip from Browse asks only for the caption
+
+### Settings file
+- `config.json` is no longer tracked in git because it contains personal asset paths. New installs start from `config.example.json`
 
 ### Fixes
 - Projects keep independent settings; switching projects no longer carries format, volume, or other settings from the previous project
 - Longform source assets are saved per project
 - Remixer respects the minimum clip length on retries and names output files after the clips actually used
 - Remixer locates FFmpeg on `PATH`, falling back to `C:\ffmpeg\bin`
-- Remixer reports that the Longform Clips template is not yet supported instead of rendering the wrong template
 - A second render can no longer be started while one is running
 - Custom format dialog validates width, height, and FPS
 - User-defined format and length presets persist across restarts

@@ -18,6 +18,10 @@ projects/
 templates/
 clip_meta.json
 transcripts/
+exports/
+upload_queue.json
+# Personal settings and asset paths (defaults live in config.example.json)
+config.json
 
 # Local scratch files
 *.txt

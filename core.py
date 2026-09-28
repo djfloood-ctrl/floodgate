@@ -49,10 +49,8 @@ CLIP_LENGTHS = {"2 secs":2,"5 secs":5,"10 secs":10,"15 secs":15,"30 secs":30,"60
 BUILTIN_FORMATS = frozenset(FORMAT_PRESETS)
 BUILTIN_LENGTHS = frozenset(CLIP_LENGTHS)
 
-# Subtitle tool options: UI label -> subtitles.py argument
-SUBTITLE_STYLES = {"Pop (word highlight)": "pop", "Classic (bottom lines)": "classic"}
-# "Best" (large-v3-turbo) handles noisy audio best and is faster than "Accurate" (medium)
-SUBTITLE_MODELS = {"Fast": "base", "Balanced": "small", "Accurate": "medium", "Best": "large-v3-turbo"}
+# Subtitle tool options (UI label -> subtitles.py argument)
+from subtitles import SUBTITLE_STYLES, SUBTITLE_MODELS
 
 SLOTS = {
     "act_a_videos": {"label":"Act A — Sad / Bleak Clips","subfolder":"assets/act_a","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"Sad, bleak, melancholic, rainy day footage","side":"left"},
@@ -169,12 +167,57 @@ class ProjectManager:
     def get(self,name): return self.projects.get(name)
     def save(self,name,data): self.projects[name]=data;save_json(self.projects_dir/name/"project.json",data)
 
+def open_path(p):
+    """Open a file or folder with the system's default app."""
+    if platform.system() == "Windows":
+        os.startfile(str(p))
+    elif platform.system() == "Darwin":
+        subprocess.Popen(["open", str(p)])
+    else:
+        subprocess.Popen(["xdg-open", str(p)])
+
 class UploadManager:
-    def __init__(self): self.drafts=[];self.paired_ig=False;self.paired_tt=False
-    def queue(self,vp,caption,platforms): self.drafts.append({"video":vp,"caption":caption,"platforms":platforms,"status":"queued"})
+    """
+    Posting queue, saved to disk so it survives restarts. Direct posting to
+    Instagram/TikTok needs developer API access, so the queue exports each clip
+    with its caption into a ready-to-post folder instead.
+    """
+    def __init__(self, path=None):
+        self.path = path
+        self.drafts = load_json(path, []) if path else []
+    def _save(self):
+        if self.path: save_json(self.path, self.drafts)
+    def queue(self, vp, caption, platforms=()):
+        self.drafts.append({"video":str(vp),"caption":caption,"platforms":list(platforms),"status":"queued"})
+        self._save()
     def get(self): return self.drafts
     def remove(self,i):
-        if 0<=i<len(self.drafts): self.drafts.pop(i)
+        if 0<=i<len(self.drafts): self.drafts.pop(i); self._save()
+    def export(self, export_root):
+        """
+        Copy every queued clip (plus its .srt, if any) into a new dated folder with
+        a .txt caption file per clip and one captions.txt listing them all.
+        Returns (folder, exported_count, missing_names).
+        """
+        todo = [d for d in self.drafts if d["status"] == "queued"]
+        folder = Path(export_root) / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        folder.mkdir(parents=True, exist_ok=True)
+        summary, missing = [], []
+        for n, d in enumerate(todo, 1):
+            src = Path(d["video"])
+            if not src.exists():
+                missing.append(src.name)
+                continue
+            base = f"{n:02d}_{src.stem}"
+            shutil.copy2(src, folder / f"{base}{src.suffix}")
+            if src.with_suffix(".srt").exists():
+                shutil.copy2(src.with_suffix(".srt"), folder / f"{base}.srt")
+            (folder / f"{base}.txt").write_text(d["caption"], encoding="utf-8")
+            summary.append(f"{base}{src.suffix}\n{d['caption']}\n")
+            d["status"] = "exported"
+        (folder / "captions.txt").write_text("\n".join(summary), encoding="utf-8")
+        self._save()
+        return folder, len(summary), missing
 
 # Custom UI components
 class HoverButton(tk.Button):

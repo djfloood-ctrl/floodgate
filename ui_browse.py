@@ -321,12 +321,7 @@ class BrowseUI:
 
     def _view(self, vp):
         self.meta.increment_views(vp.name)
-        if platform.system() == "Windows":
-            os.startfile(str(vp))
-        elif platform.system() == "Darwin":
-            subprocess.Popen(["open", str(vp)])
-        else:
-            subprocess.Popen(["xdg-open", str(vp)])
+        open_path(vp)
         self._apply_filters()
 
     def _tag(self, vp):
@@ -355,18 +350,12 @@ class BrowseUI:
             self._update_folder_inplace(vp, f.strip())
 
     def _queue_up(self, vp):
-        cap = simpledialog.askstring("Upload", f"Caption for {vp.name}:")
+        cap = simpledialog.askstring("Upload queue", f"Caption for {vp.name}\n(text, hashtags, @mentions):")
         if cap is None:
             return
-        plats = []
-        if messagebox.askyesno("Instagram", "Upload to Instagram?"):
-            plats.append("instagram")
-        if messagebox.askyesno("TikTok", "Upload to TikTok?"):
-            plats.append("tiktok")
-        if plats:
-            self.upload.queue(str(vp), cap, plats)
-            self.app._refresh_upload()
-            messagebox.showinfo("Queued", "Added!")
+        self.upload.queue(str(vp), cap)
+        self.app._refresh_upload()
+        self.app._set_status(f"Queued {vp.name} — export it from the Upload tab.")
 
     def _update_tags_inplace(self, vp):
         if vp.name in self._card_widgets and 'tags' in self._card_widgets[vp.name]:
