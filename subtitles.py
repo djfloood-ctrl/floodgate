@@ -86,9 +86,12 @@ def transcribe(src, model="small", language=None, log=print):
     """
     cache = _cache_path(src, model, language)
     if cache.exists():
-        log(f"📝 Using cached transcript ({cache.name})")
         with open(cache, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        if data.get("words"):
+            log(f"📝 Using cached transcript ({cache.name})")
+            return data
+        cache.unlink()  # an empty transcript is never worth reusing
 
     try:
         from faster_whisper import WhisperModel
@@ -102,7 +105,7 @@ def transcribe(src, model="small", language=None, log=print):
     try:
         whisper = _load_model(WhisperModel, model, "auto")
         log(f"🎙️  Transcribing {Path(src).name} ({duration / 60:.1f} min)...")
-        words, info = _run_whisper(whisper, src, language, duration, log)
+        words, info = _transcribe_with_retry(whisper, src, language, duration, log)
     except RuntimeError as e:
         # An NVIDIA GPU without the CUDA libraries (cuBLAS/cuDNN) fails only once
         # transcription starts, so retry the whole pass on the CPU.
@@ -111,12 +114,13 @@ def transcribe(src, model="small", language=None, log=print):
         log("⚠️  GPU libraries not available — using the CPU instead (slower).")
         whisper = _load_model(WhisperModel, model, "cpu")
         log(f"🎙️  Transcribing {Path(src).name} ({duration / 60:.1f} min)...")
-        words, info = _run_whisper(whisper, src, language, duration, log)
+        words, info = _transcribe_with_retry(whisper, src, language, duration, log)
 
     data = {"language": info.language, "model": model, "source": str(src), "words": words}
-    TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
-    with open(cache, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False)
+    if words:
+        TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
+        with open(cache, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
     log(f"✅ Transcribed {len(words)} words (language: {info.language})")
     return data
 
@@ -129,9 +133,22 @@ def _load_model(WhisperModel, model, device):
         return WhisperModel(model, device=device, compute_type="int8")
 
 
-def _run_whisper(whisper, src, language, duration, log):
+def _transcribe_with_retry(whisper, src, language, duration, log):
+    """
+    The voice-activity filter skips silence, which speeds up podcasts, but it can
+    throw away shouted or emotional speech over loud music or crowds. If it leaves
+    nothing, transcribe the full audio instead.
+    """
+    words, info = _run_whisper(whisper, src, language, duration, log, vad=True)
+    if not words:
+        log("⚠️  No speech detected with the voice filter — retrying on the full audio...")
+        words, info = _run_whisper(whisper, src, language, duration, log, vad=False)
+    return words, info
+
+
+def _run_whisper(whisper, src, language, duration, log, vad=True):
     segments, info = whisper.transcribe(
-        str(src), language=language, word_timestamps=True, vad_filter=True)
+        str(src), language=language, word_timestamps=True, vad_filter=vad)
     words, last_pct = [], -10
     for seg in segments:
         for w in seg.words or []:
