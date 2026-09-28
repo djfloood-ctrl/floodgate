@@ -31,8 +31,6 @@ html = f"""<!DOCTYPE html>
         p {{ margin-bottom: 16px; color: #E8DDD4; }}
         ul {{ margin: 12px 0 20px 20px; }}
         li {{ margin-bottom: 8px; color: #E8DDD4; }}
-        blockquote {{ background: #6B1010; border-left: 4px solid #FF4444; padding: 20px 24px; margin: 20px 0; border-radius: 0 8px 8px 0; font-style: italic; }}
-        blockquote strong {{ display: block; margin-top: 12px; font-style: normal; color: #C8B0B0; font-size: 13px; }}
         table {{ width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }}
         th {{ background: #6B1010; padding: 12px 16px; text-align: left; font-family: 'Courier New', monospace; color: #FF4444; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }}
         td {{ padding: 10px 16px; border-bottom: 1px solid #9E2020; font-family: 'Courier New', monospace; font-size: 12px; }}
@@ -45,13 +43,13 @@ html = f"""<!DOCTYPE html>
 <body>
     <div class="container">
         <div class="logo">FLOODGATE</div>
-        <div class="tagline">Short-Form Content Engine • Whitepaper v2.2</div>
+        <div class="tagline">Short-Form Content Engine • Whitepaper v2.3</div>
 
         <div class="divider"></div>
 
         <h1>What Is FLOODGATE?</h1>
-        <p>FLOODGATE is a short-form content generation engine that transforms raw video, audio, and voiceover assets into randomized, formatted, captioned clips optimized for Instagram Reels, TikTok, YouTube Shorts, and more. It combines a YEEZY-inspired brutalist design aesthetic with production-grade FFmpeg rendering to solve the fundamental problem facing every creator: <strong>volume.</strong></p>
-        <p>The algorithm demands constant output. FLOODGATE turns one batch of source material into hundreds of unique clips — each with different timestamps, different music pairings, random voiceover combinations. No two renders are identical. What would take hours of manual editing takes minutes of automated rendering.</p>
+        <p>FLOODGATE is a short-form content generation engine that transforms raw video, audio, and voiceover assets into randomized, formatted, captioned clips optimized for Instagram Reels, TikTok, YouTube Shorts, and more. It is built on FFmpeg and addresses a practical problem for creators and marketing teams: short-form platforms reward frequent posting, and editing each clip by hand does not scale.</p>
+        <p>FLOODGATE turns one library of source material into a large batch of distinct clips. Each render draws different source clips, timestamps, music excerpts and voiceovers, and runs unattended once started.</p>
 
         <h2>Core Capabilities</h2>
         <ul>
@@ -59,11 +57,10 @@ html = f"""<!DOCTYPE html>
             <li><strong>Format Presets</strong> — Instagram Reel (1080×1920), TikTok, YouTube Shorts, Widescreen (16:9), Cinematic (21:9)</li>
             <li><strong>Asset Management</strong> — Drag-and-drop video, audio, and voiceover slots with file size tracking</li>
             <li><strong>Smart Browse</strong> — Gallery view with favorites, tags, folders, search, and sort-by-date/views/name</li>
-            <li><strong>Trash System</strong> — Instant trash with undo, permanent delete with confirmation</li>
-            <li><strong>Live Rendering</strong> — Browse auto-updates during render batches, polling stops when complete</li>
+            <li><strong>Trash System</strong> — Instant trash with restore, permanent delete with confirmation</li>
+            <li><strong>Live Remixer Log</strong> — Render output streams into the app; the gallery refreshes when the batch completes</li>
             <li><strong>Project Bins</strong> — Save/load artist profiles with independent asset pools and settings</li>
-            <li><strong>Git Version Control</strong> — Every feature checkpointed, fully revertible</li>
-        </ul>
+                    </ul>
 
         <h2>Business Applications</h2>
         <h3>Music Industry</h3>
@@ -71,43 +68,11 @@ html = f"""<!DOCTYPE html>
         <h3>Content Agencies</h3>
         <p>Scale short-form production from dozens to thousands of clips per client per month. Template-based rendering ensures brand consistency across all output. The browse and tag system enables rapid content library management.</p>
         <h3>Podcast Networks</h3>
-        <p>Extract highlight clips from long-form episodes automatically. Pair quote-worthy moments with branded visuals and captions. Feed the algorithm without manual editing.</p>
+        <p>Once longform rendering is available, extract highlight clips from full episodes and pair them with branded visuals and captions.</p>
         <h3>Sports Media</h3>
         <p>Clip goal reactions, highlight plays, and post-game moments in batches. Multiple format outputs from a single source file.</p>
         <h3>Comedy & Entertainment</h3>
-        <p>Turn specials and sets into hundreds of shareable clips. Random extraction ensures each clip feels fresh and authentic.</p>
-
-        <div class="divider"></div>
-
-        <h2>Industry Praise</h2>
-        <blockquote>
-            "FLOODGATE is what happens when you combine the brutalist minimalism of YEEZY with the raw utility of ffmpeg. It doesn't ask permission. It just renders. Five stars."
-            <strong>— Forbes (unofficial, but they'd say this)</strong>
-        </blockquote>
-        <blockquote>
-            "We've analyzed the codebase. The in-place filtering architecture alone represents a paradigm shift in how Tkinter applications should handle state management. Also the red is very red."
-            <strong>— MIT Technology Review (spiritually)</strong>
-        </blockquote>
-        <blockquote>
-            "I showed FLOODGATE to my board. They asked if it was built by a team of engineers. I said no, it was built by one person in Notepad with git commits. They didn't believe me."
-            <strong>— A16Z Partner (hypothetically)</strong>
-        </blockquote>
-        <blockquote>
-            "The instant star toggle alone — no page reload, no flicker, just pure DOM manipulation energy in a Python GUI — deserves a Webby. Unfortunately those are for websites. But if they had a category for 'most elegant tkinter hack,' FLOODGATE sweeps."
-            <strong>— The Verge (in an alternate timeline)</strong>
-        </blockquote>
-        <blockquote>
-            "We tried to build something like this internally. It took our team six months and still crashed on long filenames. FLOODGATE handles 200MB video files, corrupt H.264 frames, and emoji in trash buttons without breaking a sweat. Respect."
-            <strong>— Senior Engineer, Adobe Premiere Team (we assume)</strong>
-        </blockquote>
-        <blockquote>
-            "The render-then-poll architecture where FLOODGATE watches its own output directory for new files and updates the gallery in real-time? That's not a feature. That's a flex."
-            <strong>— Hacker News Top Comment (predicted)</strong>
-        </blockquote>
-        <blockquote>
-            "I don't know what a 'git commit' is but this program made me 47 TikToks while I was eating cereal. 10/10."
-            <strong>— Actual User (probably you)</strong>
-        </blockquote>
+        <p>Turn specials and sets into hundreds of shareable clips. Random timestamp selection gives each clip different material.</p>
 
         <div class="divider"></div>
 
@@ -123,7 +88,7 @@ html = f"""<!DOCTYPE html>
 
         <div class="divider"></div>
 
-        <p class="footer">FLOODGATE v2.2 — Built with Python, CustomTkinter, FFmpeg, and an unreasonable amount of git commits.</p>
+        <p class="footer">FLOODGATE v2.3 — Python, CustomTkinter and FFmpeg.</p>
     </div>
 </body>
 </html>
