@@ -64,7 +64,15 @@ def probe(path):
                   if s.get("codec_type") == "video"
                   and not s.get("disposition", {}).get("attached_pic")), None)
     duration = float(info.get("format", {}).get("duration") or 0)
-    size = (int(video["width"]), int(video["height"])) if video else None
+    size = None
+    if video:
+        size = (int(video["width"]), int(video["height"]))
+        # Phones store portrait video sideways plus a rotation flag; ffmpeg applies
+        # the rotation when decoding, so lay the subtitles out for the upright frame.
+        rotation = video.get("tags", {}).get("rotate") or next(
+            (sd.get("rotation") for sd in video.get("side_data_list", []) if "rotation" in sd), 0)
+        if abs(int(float(rotation))) % 180 == 90:
+            size = (size[1], size[0])
     return duration, size
 
 
