@@ -1,18 +1,27 @@
-*.bat 
-*.exe 
-fix_*.py 
-build/ 
-dist/ 
-output/ 
-assets/ 
-*.txt 
-.env 
-*.ico 
-Documentation/ 
-templates/ 
-projects/ 
-"{first_line[" 
-clip_meta.json 
-patch_instructions.json 
-asset_manager.py 
-build/  dist/  __pycache__/ 
+# Build and packaging
+build/
+dist/
+*.bat
+*.exe
+*.ico
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Media, renders and per-user data
+assets/
+output/
+trash/
+projects/
+templates/
+clip_meta.json
+
+# Local scratch files
+*.txt
+!requirements.txt
+fix_*.py
+patch_instructions.json
+asset_manager.py
+Documentation/

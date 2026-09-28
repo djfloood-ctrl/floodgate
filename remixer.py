@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import sys
@@ -20,8 +21,19 @@ from pathlib import Path
 
 BASE_DIR   = Path(__file__).parent
 CONFIG_PATH = BASE_DIR / "config.json"
-FFMPEG     = r"C:\ffmpeg\bin\ffmpeg.exe"
-FFPROBE    = r"C:\ffmpeg\bin\ffprobe.exe"
+
+
+def find_tool(name):
+    """Prefer the tool on PATH; fall back to the classic C:\ffmpeg install."""
+    found = shutil.which(name)
+    if found:
+        return found
+    fallback = Path(r"C:\ffmpeg\bin") / f"{name}.exe"
+    return str(fallback) if fallback.exists() else name
+
+
+FFMPEG     = find_tool("ffmpeg")
+FFPROBE    = find_tool("ffprobe")
 
 # Will be set from config in main()
 CLIP_DURATION = 4.5  # Will be overridden in main()
@@ -387,8 +399,6 @@ def render_random(index, config):
         # Fallback: return last pick even if too short
         return resolve(random.choice(choices))
 
-    av_a  = pick_long_enough(config["act_a_videos"], CLIP_DURATION, "Act A")
-    av_b  = pick_long_enough(config["act_b_videos"], CLIP_DURATION, "Act B")
     am_a  = pick_long_enough(config["act_a_music"], CLIP_DURATION, "Act A music")
     am_b  = pick_long_enough(config["act_b_music"], CLIP_DURATION, "Act B music")
     voice = resolve(random.choice(config["voiceover_clips"]))
@@ -399,12 +409,7 @@ def render_random(index, config):
     cap_font  = config.get("caption_font", "Impact")
     music_vol = settings.get("music_volume", 0.35)
 
-    out_name  = f"flood_{index:03d}__{Path(av_a).stem[:18]}__{Path(av_b).stem[:18]}.mp4"
-    final_out = str(output_dir / out_name)
-
     print(f"🎬 Render #{index:03d}")
-    print(f"   Act A     → {Path(av_a).name}")
-    print(f"   Act B     → {Path(av_b).name}")
     print(f"   Music A   → {Path(am_a).name}")
     print(f"   Music B   → {Path(am_b).name}")
     print(f"   Voiceover → {Path(voice).name}")
@@ -413,9 +418,11 @@ def render_random(index, config):
     ta = lambda n: str(tmp / f"{index:03d}_{n}.aac")
 
     # ── Normalize everything to identical spec ──
+    print(f"   [1/9] Normalize Act A video...")
     max_retries = 5
     for attempt in range(max_retries):
-        av_a = resolve(random.choice(config["act_a_videos"]))
+        av_a = pick_long_enough(config["act_a_videos"], CLIP_DURATION, "Act A")
+        print(f"         → {Path(av_a).name}")
         ok, sa = normalize_video(av_a, t("a_norm"), CLIP_DURATION, mute=False)
         if ok:
             break
@@ -429,7 +436,8 @@ def render_random(index, config):
     print(f"   [2/9] Normalize Act B video (muted)...")
     max_retries = 5
     for attempt in range(max_retries):
-        av_b = resolve(random.choice(config["act_b_videos"]))
+        av_b = pick_long_enough(config["act_b_videos"], CLIP_DURATION, "Act B")
+        print(f"         → {Path(av_b).name}")
         ok, sb = normalize_video(av_b, t("b_norm"), CLIP_DURATION, mute=True)
         if ok:
             break
@@ -439,6 +447,10 @@ def render_random(index, config):
         print(f"         → All retries failed, skipping render")
         return False
     print(f"         → @ {sb:.1f}s")
+
+    # Name the output after the clips that were actually used
+    out_name  = f"flood_{index:03d}__{Path(av_a).stem[:18]}__{Path(av_b).stem[:18]}.mp4"
+    final_out = str(output_dir / out_name)
 
     print(f"   [3/9] Normalize Act A music...")
     ok, sma = normalize_audio(am_a, CLIP_DURATION, ta("music_a"))
@@ -515,14 +527,16 @@ def main():
     print("══════════════════════════════════════\n")
 
     config = load_config()
+    if config.get("settings", {}).get("template") == "LONGFORM CLIPS":
+        print("⚠️  The LONGFORM CLIPS template is not supported by the remixer yet.")
+        print("   Switch to SAD CLIP / HAPPY CLIP to render.")
+        sys.exit(1)
     check_assets(config)
     global CLIP_DURATION
-    global CLIP_DURATION; CLIP_DURATION = config.get("settings", {}).get("clip_length", 15) / 2
+    CLIP_DURATION = config.get("settings", {}).get("clip_length", 15) / 2
 
     num_renders = config.get("num_renders", 10)
-    mode = "PREVIEW (1080p)" if config["settings"].get("preview_mode") else "FULL QUALITY (4K)"
-
-    print(f"🎯 Mode        : {mode}")
+    print(f"🎯 Output      : {TARGET_W}x{TARGET_H} @ {TARGET_FPS}fps")
     print(f"🎲 Renders     : {num_renders}")
     print(f"✂️  Clip length  : {CLIP_DURATION}s per act")
     print(f"🎵 Audio       : random subsections, all normalized")

@@ -2,6 +2,29 @@
 
 ---
 
+## Unreleased
+
+- Projects keep independent settings; switching projects no longer carries format, volume, or other settings from the previous project
+- Longform source assets are saved per project
+- Remixer respects the minimum clip length on retries and names output files after the clips actually used
+- Remixer locates FFmpeg on `PATH`, falling back to `C:\ffmpeg\bin`
+- Remixer reports that the Longform Clips template is not yet supported instead of rendering the wrong template
+- A second render can no longer be started while one is running
+- Custom format dialog validates width, height, and FPS
+- User-defined format and length presets persist across restarts
+- Missing asset files no longer prevent the app from starting
+- Added README and `requirements.txt`; whitepaper updated to reflect current behavior
+
+---
+
+## v2.3 — 2026-06-24
+
+- Integrated remixer log viewer with live output
+- Per-folder sort in the Browse gallery
+- Codebase split into `core`, `ui_assets`, and `ui_browse` modules
+
+---
+
 ## v2.2 — 2026-06-04
 
 - Updated whitepaper with technical accuracy and DJ FLOOD voice
@@ -38,4 +61,4 @@
 
 ---
 
-*FLOODGATE v2.2 — Built with Python, CustomTkinter, FFmpeg, and an unreasonable amount of git commits.*
+*FLOODGATE — Python, CustomTkinter and FFmpeg.*

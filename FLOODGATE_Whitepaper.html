@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FLOODGATE — Official Whitepaper v2.2</title>
+<title>FLOODGATE — Whitepaper v2.3</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Bebas+Neue&display=swap');
 
@@ -234,30 +234,6 @@
   tr:hover td { background: rgba(165,34,34,0.3); }
 
   /* QUOTE BLOCKS */
-  .praise-block {
-    border-left: 3px solid var(--gold);
-    padding: 14px 20px;
-    margin: 12px 0;
-    background: rgba(0,0,0,0.15);
-  }
-
-  .praise-block blockquote {
-    color: var(--gray);
-    font-size: 12px;
-    font-style: italic;
-    margin-bottom: 8px;
-  }
-
-  .praise-block cite {
-    font-size: 10px;
-    font-weight: bold;
-    letter-spacing: 2px;
-    color: var(--gold);
-    text-transform: uppercase;
-    font-style: normal;
-  }
-
-  /* SPEC BADGES */
   .spec-row {
     display: flex;
     gap: 10px;
@@ -346,22 +322,18 @@
   <!-- HEADER -->
   <div class="header">
     <div class="logo-title">FLOODGATE</div>
-    <div class="tagline">Short-Form Content Generation Engine &mdash; Built for the Algorithm</div>
-    <div class="version-badge">v2.2 &mdash; Production Build</div>
+    <div class="tagline">Batch Short-Form Video Generation</div>
+    <div class="version-badge">v2.3</div>
   </div>
 
   <!-- WHAT IS FLOODGATE -->
   <h1>What Is FLOODGATE?</h1>
 
-  <div class="flood-voice">
-    The algorithm doesn't care how tired you are. It wants content today, tomorrow, and the day after that. FLOODGATE is my answer to that. One session of footage turns into hundreds of clips &mdash; automated, randomized, ready to post. I built this because I needed it, and now it works.
-  </div>
-
   <p>
     FLOODGATE is a <strong>short-form content generation engine</strong> that transforms raw video, audio, and AI voiceover assets into randomized, formatted, captioned clips &mdash; optimized for Instagram Reels, TikTok, YouTube Shorts, and every major platform in between.
   </p>
   <p>
-    It combines a YEEZY-inspired brutalist design aesthetic with production-grade FFmpeg rendering to solve the fundamental problem facing every creator: <strong>volume.</strong> The algorithm demands constant output. FLOODGATE turns one batch of source material into hundreds of unique clips &mdash; each with different timestamps, different music pairings, random voiceover combinations. No two renders are identical. What would take hours of manual editing takes minutes of automated rendering.
+    It addresses a practical problem for creators and marketing teams: short-form platforms reward frequent posting, and editing each clip by hand does not scale. FLOODGATE turns one library of source material into a large batch of distinct clips. Each render draws different source clips, timestamps, music excerpts and voiceovers, and runs unattended once started.
   </p>
 
   <div class="spec-row">
@@ -369,7 +341,7 @@
     <div class="spec-badge">UI <span>CustomTkinter</span></div>
     <div class="spec-badge">Language <span>Python 3</span></div>
     <div class="spec-badge">Platform <span>Windows</span></div>
-    <div class="spec-badge">Version <span>2.2</span></div>
+    <div class="spec-badge">Version <span>2.3</span></div>
   </div>
 
   <hr class="divider">
@@ -377,20 +349,20 @@
   <!-- CORE CAPABILITIES -->
   <h1>Core Capabilities</h1>
 
-  <p>FLOODGATE is a modular workspace. Every component is independent, configurable, and built to be fast. Here's what's under the hood:</p>
+  <p>The application is organized into three workspaces (Assets, Browse and Upload), supported by a standalone rendering engine.</p>
 
   <div class="feature-grid">
     <div class="feature-item">
       <span class="feat-label">Contrast Engine</span>
-      <p>Dual-act clip pairing &mdash; Sad (Act A) vs. Energy (Act B) &mdash; with independent music beds and AI voiceover channels. The signature FLOODGATE format that makes every render feel intentional.</p>
+      <p>Dual-act clip pairing &mdash; Sad (Act A) vs. Energy (Act B) &mdash; with independent music beds, burned-in captions, and a branded logo outro timed to a voiceover clip.</p>
     </div>
     <div class="feature-item">
       <span class="feat-label">Format Presets</span>
-      <p>12 built-in presets covering every major platform: Reel/TikTok (1080&times;1920), YouTube Shorts, Instagram Story, Snapchat, Square (1:1), LinkedIn, Widescreen (16:9), Twitter/X, Facebook, Cinematic (21:9), Pinterest (2:3), and fully Custom dimensions with user-defined width, height, and FPS.</p>
+      <p>12 built-in presets covering every major platform: Reel/TikTok (1080&times;1920), YouTube Shorts, Instagram Story, Snapchat, Square (1:1), LinkedIn, Widescreen (16:9), Twitter/X, Facebook, Cinematic (21:9), Pinterest (2:3), and Custom dimensions with user-defined width, height, and FPS. User-defined format and length presets persist in <code>config.json</code>.</p>
     </div>
     <div class="feature-item">
       <span class="feat-label">Template System</span>
-      <p>Switch between render templates &mdash; SAD CLIP / HAPPY CLIP for contrast content, LONGFORM CLIPS for podcasts and extended source material. Custom templates can be created, saved, and archived. Default templates are protected.</p>
+      <p>Switch between render templates &mdash; SAD CLIP / HAPPY CLIP for contrast content, LONGFORM CLIPS for podcasts and extended source material. Custom templates can be created and removed; default templates are protected. <em>The remixer currently renders the SAD CLIP / HAPPY CLIP structure only; LONGFORM rendering is planned.</em></p>
     </div>
     <div class="feature-item">
       <span class="feat-label">Asset Management</span>
@@ -413,8 +385,8 @@
       <p>Instant trash with one click &mdash; the card vanishes from the gallery immediately with no delay. Restore clips back to output with one click. Permanent delete requires confirmation. Empty Trash wipes the entire trash directory at once.</p>
     </div>
     <div class="feature-item">
-      <span class="feat-label">Live Render Polling</span>
-      <p>Browse gallery auto-updates while the remixer is rendering in a separate terminal. Polls the output directory every 1.5 seconds and adds new clips as they appear. Auto-stops polling when the render completes and cleans up the signal file.</p>
+      <span class="feat-label">Live Remixer Log</span>
+      <p>Remixer output streams line by line into a log panel on the Assets tab. When the render finishes, the status bar reports success or the exit code, and the Browse gallery refreshes automatically.</p>
     </div>
     <div class="feature-item">
       <span class="feat-label">Project Bins</span>
@@ -422,11 +394,11 @@
     </div>
     <div class="feature-item">
       <span class="feat-label">Render Control</span>
-      <p>Slider + quick-select buttons (5, 10, 25, 50, 100) to set render count. Preview Mode option. Ctrl+R keyboard shortcut launches the remixer from anywhere in the app. Renders run in a separate terminal window so the UI stays live during processing.</p>
+      <p>Slider + quick-select buttons (5, 10, 25, 50, 100) to set render count. Ctrl+R launches the remixer from anywhere in the app. Renders run in a background process so the UI remains responsive, and a second render cannot be started while one is in progress.</p>
     </div>
     <div class="feature-item">
-      <span class="feat-label">Upload Queue</span>
-      <p>Queue rendered clips for Instagram and TikTok directly from the browse view. Attach captions per clip. Pair platform accounts once. Upload all queued drafts in one action. Remove individual drafts from the queue before posting.</p>
+      <span class="feat-label">Upload Queue (Planned)</span>
+      <p>Rendered clips can be queued for Instagram and TikTok from the Browse view. Platform pairing and publishing are not yet connected to either service; the queue currently serves as a staging list.</p>
     </div>
   </div>
 
@@ -437,17 +409,20 @@
 
   <h2>Rendering Pipeline</h2>
   <p>
-    FLOODGATE separates the UI process from the render process entirely. When you hit RUN, it writes a <code>_run_remixer.bat</code> script and launches it in a new terminal window via <code>subprocess.Popen</code> with <code>CREATE_NEW_CONSOLE</code>. This means the UI never freezes during a render, no matter how many clips are queued. When the render completes, the bat script drops a <code>_render_complete.txt</code> signal file that the live polling loop detects &mdash; polling stops, the gallery refreshes, and the signal file is cleaned up automatically.
+    The UI and the renderer run as separate processes. Starting a render saves the current settings to <code>config.json</code> and launches <code>remixer.py</code> via <code>subprocess.Popen</code> with unbuffered output. A background thread reads the process output and forwards each line to the log panel on the UI thread, so the interface stays responsive regardless of batch size. On exit, the return code is reported and the gallery refreshes.
+  </p>
+  <p>
+    Within each render, every source is first normalized to an identical specification (target resolution and frame rate, H.264 / yuv420p video, AAC stereo 44.1&nbsp;kHz audio). Captions are then burned in, music is mixed under each act, and a logo outro is generated to match the voiceover's duration. Because all segments share one specification, the final concatenation is reliable. Source clips shorter than the requested duration are avoided, and clips that fail to decode are retried with a different source.
   </p>
 
   <h2>In-Place Filtering Architecture</h2>
   <p>
-    The browse gallery does not rebuild from scratch on every filter action. Each card widget is tracked in a <code>_card_widgets</code> dictionary keyed by filename. Folder changes, tag filters, and search queries show/hide existing cards using <code>pack()</code> and <code>pack_forget()</code> rather than destroying and recreating the DOM. This means filtering is instant regardless of library size. A full rebuild only happens when explicitly requested via the refresh button or a sort change.
+    The browse gallery does not rebuild from scratch on every filter action. Each card widget is tracked in a <code>_card_widgets</code> dictionary keyed by filename. Folder changes, tag filters, and search queries show/hide existing cards using <code>pack()</code> and <code>pack_forget()</code> rather than destroying and recreating the DOM. This means filtering is instant regardless of library size. A full rebuild happens only when explicitly requested through the refresh button or a sort change.
   </p>
 
   <h2>Metadata & Persistence</h2>
   <p>
-    All clip metadata (favorites, tags, folders, view counts) is stored in <code>clip_meta.json</code>. On startup, the <code>ClipMeta</code> class scans both the output and trash directories and migrates any untracked files into the metadata store automatically. Project configurations are stored as individual <code>project.json</code> files inside <code>projects/[name]/</code> directories. Global settings persist to <code>config.json</code> and are written on every change.
+    All clip metadata (favorites, tags, folders, view counts) is stored in <code>clip_meta.json</code>. On startup, the <code>ClipMeta</code> class scans both the output and trash directories and migrates any untracked files into the metadata store automatically. Project configurations are stored as individual <code>project.json</code> files inside <code>projects/[name]/</code> directories. Global settings persist to <code>config.json</code> and are written on every change. Each project stores an independent copy of its settings, so switching projects never carries values from one project to another.
   </p>
 
   <h2>Momentum Scrolling</h2>
@@ -457,7 +432,7 @@
 
   <h2>File Handling</h2>
   <p>
-    Files under 200MB are copied to their designated asset subfolders on import. Files over 200MB are referenced by absolute path to avoid unnecessary disk duplication. All paths are stored with forward slashes for cross-platform consistency. The logo slot supports PNG and JPG with a separate preview-ready asset folder.
+    Files under 200MB are copied to their designated asset subfolders on import. Files over 200MB are referenced by absolute path to avoid unnecessary disk duplication. All paths are stored with forward slashes and resolved relative to the application folder. Assets that are missing on disk are flagged in the list rather than interrupting startup. The logo slot supports PNG and JPG.
   </p>
 
   <hr class="divider">
@@ -465,14 +440,10 @@
   <!-- BUSINESS APPLICATIONS -->
   <h1>Business Applications</h1>
 
-  <div class="flood-voice">
-    This isn't just for DJs. Anyone who creates content at scale and is tired of doing it manually &mdash; this is the tool. I built it for my workflow but I made it general enough that it works for anyone who needs volume.
-  </div>
-
   <div class="industry-grid">
     <div class="industry-row">
       <div class="ind-label">Music &amp; DJs</div>
-      <div class="ind-desc">Generate hundreds of promotional clips from a single music video, live set, or studio session. Each clip features a different section of the track, different visual moments, and branded captions ready for Reels, TikTok, and Stories. The contrast engine was designed for exactly this &mdash; Act A builds tension, Act B delivers the drop.</div>
+      <div class="ind-desc">Generate hundreds of promotional clips from a single music video, live set, or studio session. Each clip features a different section of the track, different visual moments, and branded captions ready for Reels, TikTok, and Stories. The two-act structure was designed for this use case: Act A sets up the contrast, and Act B delivers the track.</div>
     </div>
     <div class="industry-row">
       <div class="ind-label">Content Agencies</div>
@@ -480,7 +451,7 @@
     </div>
     <div class="industry-row">
       <div class="ind-label">Podcasts</div>
-      <div class="ind-desc">Extract highlight clips from long-form episodes automatically via the Longform Clips template. Pair quote-worthy moments with branded visuals and AI voiceovers. Feed the algorithm without touching a timeline.</div>
+      <div class="ind-desc">Once longform rendering is available, the Longform Clips template will extract highlight clips from full episodes and pair them with branded visuals and voiceovers.</div>
     </div>
     <div class="industry-row">
       <div class="ind-label">Sports Media</div>
@@ -488,53 +459,12 @@
     </div>
     <div class="industry-row">
       <div class="ind-label">Comedy &amp; Entertainment</div>
-      <div class="ind-desc">Turn specials, sets, and sketch packages into hundreds of shareable clips. Random timestamp extraction ensures each clip feels fresh and authentic rather than a predictable highlight reel.</div>
+      <div class="ind-desc">Turn specials, sets, and sketch packages into hundreds of shareable clips. Random timestamp selection gives each clip different material rather than a fixed highlight reel.</div>
     </div>
     <div class="industry-row">
       <div class="ind-label">Real Estate &amp; Commercial</div>
       <div class="ind-desc">Generate property walkthrough clips, product showcases, and testimonial snippets in bulk with consistent branding, logo watermarks, and captions locked per project.</div>
     </div>
-  </div>
-
-  <hr class="divider">
-
-  <!-- INDUSTRY PRAISE -->
-  <h1>Industry Praise</h1>
-  <p style="font-size:11px; color: var(--gray); margin-bottom: 20px;">* All quotes are aspirational. The sentiment is accurate. The attribution is spiritually correct.</p>
-
-  <div class="praise-block">
-    <blockquote>"FLOODGATE is what happens when you combine the brutalist minimalism of YEEZY with the raw utility of FFmpeg. It doesn't ask permission. It just renders. Five stars."</blockquote>
-    <cite>Forbes &mdash; (unofficial, but they'd say this)</cite>
-  </div>
-
-  <div class="praise-block">
-    <blockquote>"We analyzed the codebase. The in-place filtering architecture alone &mdash; where folder changes, tag filters, and search all operate on live widgets without a single DOM rebuild &mdash; represents a paradigm shift in how Python GUI applications should handle state management. Also the red is very red."</blockquote>
-    <cite>MIT Technology Review &mdash; (spiritually)</cite>
-  </div>
-
-  <div class="praise-block">
-    <blockquote>"I showed FLOODGATE to my board. They asked if it was built by a team of engineers. I said no, one person, Python, git commits. They didn't believe me."</blockquote>
-    <cite>A16Z Partner &mdash; (hypothetically)</cite>
-  </div>
-
-  <div class="praise-block">
-    <blockquote>"The instant star toggle &mdash; no page reload, no flicker, just a direct widget config call updating the label in place &mdash; deserves recognition. If there were a category for 'most elegant Python GUI interaction,' FLOODGATE sweeps it."</blockquote>
-    <cite>The Verge &mdash; (alternate timeline)</cite>
-  </div>
-
-  <div class="praise-block">
-    <blockquote>"We tried to build something like this internally. It took our team six months and still crashed on long filenames. FLOODGATE handles 200MB video files, corrupt H.264 frames, and emoji in trash buttons without breaking a sweat. Respect."</blockquote>
-    <cite>Senior Engineer, Adobe Premiere Team &mdash; (we assume)</cite>
-  </div>
-
-  <div class="praise-block">
-    <blockquote>"The render-then-poll architecture &mdash; where FLOODGATE watches its own output directory every 1.5 seconds, adds new cards as they appear, and auto-stops when it detects the completion signal &mdash; is not a feature. That's a flex."</blockquote>
-    <cite>Hacker News Top Comment &mdash; (predicted)</cite>
-  </div>
-
-  <div class="praise-block">
-    <blockquote>"I don't know what a git commit is but this program made me 47 TikToks while I was eating cereal. 10/10."</blockquote>
-    <cite>Actual User &mdash; (probably you)</cite>
   </div>
 
   <hr class="divider">
@@ -551,6 +481,10 @@
       </tr>
     </thead>
     <tbody>
+      <tr><td>2026-09-28</td><td><code>f769ca8</code></td><td>Stability fixes: per-project settings isolation, remixer source selection, persistent format and length presets, single-render guard, FFmpeg discovery on PATH, graceful handling of missing assets.</td></tr>
+      <tr><td>2026-06-24</td><td><code>e167da8</code></td><td>v2.3: integrated remixer log viewer with live output, per-folder sort, modular codebase.</td></tr>
+      <tr><td>2026-06-24</td><td><code>be74226</code></td><td>Modular split into <code>core</code>, <code>ui_assets</code> and <code>ui_browse</code>.</td></tr>
+      <tr><td>2026-06-24</td><td><code>f6cee48</code></td><td>v2.2.1 stability and usability fixes.</td></tr>
       <tr><td>2026-06-04</td><td><code>cleanup</code></td><td>Removed build artifacts, patch scripts, and installer files. Repo cleaned to production state.</td></tr>
       <tr><td>2026-05-12</td><td><code>b3d5ed5</code></td><td>Global mousewheel momentum scrolling on all tabs. CTkScrollableFrame on browse gallery.</td></tr>
       <tr><td>2026-05-12</td><td><code>dc5d266</code></td><td>Gallery layout locked to 4 browse cards per row at fixed 180&times;210. Asset panels with side padding. Gitignore cleanup.</td></tr>
@@ -570,10 +504,9 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    <p>FLOODGATE v2.2 &mdash; Built with Python, CustomTkinter, FFmpeg, and an unreasonable amount of git commits.</p>
-    <p style="margin-top: 8px;">Open Source &mdash; github.com/djfloood-ctrl/floodgate</p>
+    <p>FLOODGATE v2.3 &mdash; Python, CustomTkinter and FFmpeg.</p>
+    <p style="margin-top: 8px;">github.com/djfloood-ctrl/floodgate</p>
     <div class="flood-sign">DJ FLOOD</div>
-    <p style="margin-top: 12px; font-size: 9px; letter-spacing: 1px;">The algorithm is a river. FLOODGATE is the dam.</p>
   </div>
 
 </div>
