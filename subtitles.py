@@ -35,7 +35,7 @@ CONFIG_PATH    = BASE_DIR / "config.json"
 OUTPUT_DIR     = BASE_DIR / "output"
 TRANSCRIPT_DIR = BASE_DIR / "transcripts"
 
-MODELS = ["tiny", "base", "small", "medium", "large-v3"]
+MODELS = ["tiny", "base", "small", "medium", "large-v3-turbo", "large-v3"]
 STYLES = ["pop", "classic"]
 
 # ASS colours are &HAABBGGRR

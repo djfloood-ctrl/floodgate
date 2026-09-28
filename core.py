@@ -51,7 +51,8 @@ BUILTIN_LENGTHS = frozenset(CLIP_LENGTHS)
 
 # Subtitle tool options: UI label -> subtitles.py argument
 SUBTITLE_STYLES = {"Pop (word highlight)": "pop", "Classic (bottom lines)": "classic"}
-SUBTITLE_MODELS = {"Fast": "base", "Balanced": "small", "Most accurate": "medium"}
+# "Best" (large-v3-turbo) handles noisy audio best and is faster than "Accurate" (medium)
+SUBTITLE_MODELS = {"Fast": "base", "Balanced": "small", "Accurate": "medium", "Best": "large-v3-turbo"}
 
 SLOTS = {
     "act_a_videos": {"label":"Act A — Sad / Bleak Clips","subfolder":"assets/act_a","types":[("Video","*.mp4 *.mov *.avi *.mkv")],"hint":"Sad, bleak, melancholic, rainy day footage","side":"left"},

@@ -101,12 +101,12 @@ python subtitles.py "Episode 12.mp4" --srt-only                       # captions
 | Option | Values |
 |---|---|
 | `--style` | `pop`: up to three large words at a time, with the spoken word highlighted. `classic`: sentence captions along the bottom. |
-| `--model` | `tiny`, `base`, `small` (default), `medium`, `large-v3`. Larger models are more accurate but slower. The app's Fast, Balanced and Most accurate map to `base`, `small` and `medium`. |
+| `--model` | `tiny`, `base`, `small` (default), `medium`, `large-v3-turbo`, `large-v3`. Larger models are more accurate but slower. `large-v3-turbo` is the best choice for noisy audio: close to `large-v3` accuracy at a fraction of the time. The app's Fast, Balanced, Accurate and Best map to `base`, `small`, `medium` and `large-v3-turbo`. |
 | `--language` | A language code such as `en` or `es`. Detected automatically by default. |
 | `--font` | Subtitle font. Defaults to the caption font set in the app. |
 
 **How it works:**
-- The first time you use a model, it is downloaded once, about 150–1500 MB depending on size.
+- The first time you use a model, it is downloaded once, about 150 MB (Fast) to 1.6 GB (Best).
 - Each file is transcribed once with word-level timestamps and cached in `transcripts/`. Cutting more clips from the same podcast, or re-rendering in another style, reuses the transcript and only takes as long as the video encode.
 - An NVIDIA GPU is used automatically if the CUDA 12 libraries (cuBLAS and cuDNN 9) are installed. Otherwise transcription runs on the CPU, which needs no setup but is slower.
 - Audio-only files are rendered at 1080×1920 over an animated waveform.

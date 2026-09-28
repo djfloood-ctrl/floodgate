@@ -227,6 +227,8 @@ class AssetUI:
         opts.pack(pady=(0,4))
         style = settings.get("subtitle_style")
         model = settings.get("subtitle_model")
+        if model == "Most accurate":  # renamed when "Best" was added
+            model = "Accurate"
         self.sub_style_var = tk.StringVar(value=style if style in SUBTITLE_STYLES else next(iter(SUBTITLE_STYLES)))
         self.sub_model_var = tk.StringVar(value=model if model in SUBTITLE_MODELS else "Balanced")
         for label, var, choices in [("STYLE:", self.sub_style_var, SUBTITLE_STYLES), ("ACCURACY:", self.sub_model_var, SUBTITLE_MODELS)]:

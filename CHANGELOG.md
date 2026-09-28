@@ -12,6 +12,7 @@
 - Excerpt support with `--start` and `--end`; audio-only files are rendered over a waveform
 - New Subtitles panel on the Assets tab; the log panel is renamed Output Log and shows subtitle progress
 - Only one job, render or subtitles, runs at a time
+- Accuracy levels: Fast, Balanced, Accurate and Best. Best uses Whisper large-v3-turbo and is the most accurate on noisy audio
 
 ### Fixes
 - Projects keep independent settings; switching projects no longer carries format, volume, or other settings from the previous project
