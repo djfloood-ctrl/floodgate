@@ -75,15 +75,16 @@ class AssetUI:
         self._logo_card(ct)
         self._settings_card(ct)
         self._render_card(ct)
+        self._subtitles_card(ct)
 
         # Log viewer – the working approach with _parent_canvas
         log_frame = tk.Frame(ct, bg=DARK_RED)
         log_frame.pack(fill="x", pady=(6,0))
-        tk.Label(log_frame, text="REMIXER LOG", font=("Courier New",7,"bold"), fg=GRAY, bg=DARK_RED, anchor="w").pack(fill="x", padx=4, pady=(4,0))
+        tk.Label(log_frame, text="OUTPUT LOG", font=("Courier New",7,"bold"), fg=GRAY, bg=DARK_RED, anchor="w").pack(fill="x", padx=4, pady=(4,0))
 
         self.log_widget = ctk.CTkTextbox(log_frame, fg_color=DARK_RED, text_color=WHITE, font=("Courier New",11), height=120, wrap="word")
         self.log_widget.pack(fill="x", padx=4, pady=(0,4))
-        self.log_widget.insert("end", "Ready for remixer output...\n")
+        self.log_widget.insert("end", "Ready. Remixer and subtitle output appears here.\n")
         self.log_widget.configure(state="disabled")
 
         # Force scrollbar visible
@@ -214,6 +215,31 @@ class AssetUI:
             HoverButton(pr, text=str(n), font=("Courier New",8,"bold"), fg=GRAY, bg=DARK_RED, hover_bg=ACCENT, hover_fg=WHITE, bd=0, padx=8, pady=1, cursor="hand2",
                         command=lambda v=n: (self.render_count_var.set(v), self.count_label.config(text=str(v)), self.config.update({"num_renders":v}), self.app._save_config())).pack(side="left", padx=1)
         HoverButton(card, text="▶  RUN REMIXER  (Ctrl+R)", font=("Helvetica Neue",11,"bold"), fg=BLACK, bg=WHITE, hover_bg=ACCENT, hover_fg=WHITE, bd=0, padx=24, pady=6, cursor="hand2", command=self.app._run_remixer).pack(pady=(0,8))
+
+    def _subtitles_card(self, parent):
+        card = tk.Frame(parent, bg=CARD_BG, highlightthickness=1, highlightbackground=BORDER, highlightcolor=BORDER)
+        card.pack(fill="x", pady=(0,6), ipady=2)
+        tk.Label(card, text="SUBTITLES", font=self.fonts["heading"], fg=WHITE, bg=CARD_BG).pack(pady=(8,0))
+        tk.Label(card, text="Auto-transcribe any video, podcast or interview and burn in captions",
+                 font=self.fonts["small"], fg=GRAY, bg=CARD_BG).pack(pady=(0,6))
+        settings = self.config.get("settings", {})
+        opts = tk.Frame(card, bg=CARD_BG)
+        opts.pack(pady=(0,4))
+        style = settings.get("subtitle_style")
+        model = settings.get("subtitle_model")
+        self.sub_style_var = tk.StringVar(value=style if style in SUBTITLE_STYLES else next(iter(SUBTITLE_STYLES)))
+        self.sub_model_var = tk.StringVar(value=model if model in SUBTITLE_MODELS else "Balanced")
+        for label, var, choices in [("STYLE:", self.sub_style_var, SUBTITLE_STYLES), ("ACCURACY:", self.sub_model_var, SUBTITLE_MODELS)]:
+            tk.Label(opts, text=label, font=("Courier New",7,"bold"), fg=GRAY, bg=CARD_BG).pack(side="left", padx=(8,2))
+            m = tk.OptionMenu(opts, var, *choices.keys())
+            m.config(font=self.fonts["body"], bg=DARK_RED, fg=WHITE, activebackground=CARD_BG, bd=0, highlightthickness=0)
+            m["menu"].config(font=self.fonts["body"], bg=CARD_BG, fg=WHITE, bd=0)
+            m.pack(side="left")
+        self.sub_srt_only_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(card, text="Only make the .srt file (no video)", variable=self.sub_srt_only_var, font=self.fonts["small"],
+                       fg=WHITE, bg=CARD_BG, selectcolor=DARK_RED, activebackground=CARD_BG, activeforeground=WHITE).pack()
+        HoverButton(card, text="CC  SUBTITLE A VIDEO…", font=("Helvetica Neue",10,"bold"), fg=BLACK, bg=WHITE, hover_bg=ACCENT, hover_fg=WHITE,
+                    bd=0, padx=20, pady=5, cursor="hand2", command=self.app._run_subtitles).pack(pady=(4,8))
 
     # ------------------------------------------------------------------
     # Log methods

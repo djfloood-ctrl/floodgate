@@ -17,6 +17,7 @@ trash/
 projects/
 templates/
 clip_meta.json
+transcripts/
 
 # Local scratch files
 *.txt

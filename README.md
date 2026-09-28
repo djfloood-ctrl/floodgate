@@ -41,6 +41,7 @@ The remixer runs as a separate process, so the interface stays responsive and sh
 - **Browse gallery.** Review rendered clips with favorites, color-coded tags, folders, search, and sorting by date, favorites or name.
 - **Trash.** Deleted clips go to a trash folder, where they can be restored or permanently deleted.
 - **Batch rendering.** Render up to 100 clips per run. Press **Ctrl+R** from anywhere in the app to start.
+- **Automatic subtitles.** Transcribe any video or audio file (a full podcast, interview or video) and burn in styled captions, plus an `.srt` file for platforms that accept uploaded captions. See [Subtitles](#subtitles).
 
 ---
 
@@ -81,6 +82,37 @@ Press **F11** to toggle full screen.
 
 ---
 
+## Subtitles
+
+FLOODGATE can add subtitles to any video or audio file. Speech is transcribed locally with [faster-whisper](https://github.com/SYSTRAN/faster-whisper), an optimized build of OpenAI's Whisper model. It is free, runs offline, and keeps your media on your machine.
+
+**In the app:** on the Assets tab, open the **Subtitles** panel, choose a style and accuracy level, then click **Subtitle a video** and pick a file. Progress appears in the Output Log. The subtitled video and its `.srt` file are saved to `output/` and appear in the Browse tab.
+
+**From the command line:**
+
+```bash
+python subtitles.py "Episode 12.mp4"                                  # pop style, whole file
+python subtitles.py "Episode 12.mp4" --style classic                  # classic bottom-line captions
+python subtitles.py "Episode 12.mp4" --start 754 --end 812 -o clip.mp4  # just one excerpt
+python subtitles.py interview.mp3                                     # audio-only: rendered over a waveform
+python subtitles.py "Episode 12.mp4" --srt-only                       # captions file only, no video
+```
+
+| Option | Values |
+|---|---|
+| `--style` | `pop`: up to three large words at a time, with the spoken word highlighted. `classic`: sentence captions along the bottom. |
+| `--model` | `tiny`, `base`, `small` (default), `medium`, `large-v3`. Larger models are more accurate but slower. The app's Fast, Balanced and Most accurate map to `base`, `small` and `medium`. |
+| `--language` | A language code such as `en` or `es`. Detected automatically by default. |
+| `--font` | Subtitle font. Defaults to the caption font set in the app. |
+
+**How it works:**
+- The first time you use a model, it is downloaded once, about 150–1500 MB depending on size.
+- Each file is transcribed once with word-level timestamps and cached in `transcripts/`. Cutting more clips from the same podcast, or re-rendering in another style, reuses the transcript and only takes as long as the video encode.
+- A GPU is used automatically when one is available.
+- Audio-only files are rendered at 1080×1920 over an animated waveform.
+
+---
+
 ## Project layout
 
 | Path | Purpose |
@@ -90,10 +122,11 @@ Press **F11** to toggle full screen.
 | `ui_browse.py` | Browse tab: gallery, filtering, tags, folders and trash |
 | `core.py` | Shared constants, presets, clip metadata and project storage |
 | `remixer.py` | FFmpeg rendering pipeline |
+| `subtitles.py` | Speech transcription and subtitle rendering (usable on its own) |
 | `config.json` | Current asset lists and render settings |
 | `make_changelog.py` | Regenerates `FLOODGATE_Whitepaper.html` from the git history |
 
-Created while the app runs (not tracked in git): `assets/`, `output/`, `trash/`, `projects/`, `clip_meta.json`.
+Created while the app runs (not tracked in git): `assets/`, `output/`, `trash/`, `projects/`, `transcripts/`, `clip_meta.json`.
 
 ---
 

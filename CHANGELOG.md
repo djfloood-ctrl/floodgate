@@ -4,6 +4,16 @@
 
 ## Unreleased
 
+### Automatic subtitles
+- New `subtitles.py`: transcribes any video or audio file locally with faster-whisper and burns in styled subtitles
+- Two styles: **Pop**, up to three large words at a time with the spoken word highlighted, and **Classic**, sentence captions along the bottom
+- Also writes an `.srt` captions file; an option creates only the `.srt`
+- Transcripts are cached per file, so re-cutting the same podcast or interview is fast
+- Excerpt support with `--start` and `--end`; audio-only files are rendered over a waveform
+- New Subtitles panel on the Assets tab; the log panel is renamed Output Log and shows subtitle progress
+- Only one job, render or subtitles, runs at a time
+
+### Fixes
 - Projects keep independent settings; switching projects no longer carries format, volume, or other settings from the previous project
 - Longform source assets are saved per project
 - Remixer respects the minimum clip length on retries and names output files after the clips actually used

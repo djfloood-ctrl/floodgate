@@ -563,18 +563,60 @@ class FloodGate(ctk.CTk):
     def _stop_live_polling(self):
         pass
 
-    def _remixer_finished(self, return_code):
+    def _job_running(self):
+        if self._process and self._process.poll() is None:
+            self._set_status("A job is already running — wait for it to finish.")
+            return True
+        return False
+
+    def _job_finished(self, name, return_code):
         if return_code == 0:
-            self.asset_ui.log("=== Remixer finished successfully ===")
-            self._set_status("✅ Remixer complete.")
+            self.asset_ui.log(f"=== {name} finished successfully ===")
+            self._set_status(f"✅ {name} complete.")
             self.browse_ui._refresh_browse()
         else:
-            self.asset_ui.log(f"=== Remixer exited with code {return_code} ===")
-            self._set_status(f"⚠️ Remixer failed (code {return_code})")
+            self.asset_ui.log(f"=== {name} exited with code {return_code} ===")
+            self._set_status(f"⚠️ {name} failed (code {return_code})")
+
+    def _run_script(self, script, args, name):
+        """Run a helper script in the background and stream its output into the log panel."""
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+        env["PYTHONIOENCODING"] = "utf-8"
+        creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        self._process = subprocess.Popen(
+            [sys.executable, "-u", str(script), *args],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            creationflags=creation_flags,
+            cwd=str(self.BASE_DIR),
+            env=env,
+            encoding='utf-8',
+            errors='replace'
+        )
+        process = self._process
+
+        def read_output():
+            try:
+                for line in iter(process.stdout.readline, ''):
+                    if line:
+                        self.asset_ui.log(line.rstrip())
+                    else:
+                        break
+            except Exception as e:
+                self.asset_ui.log(f"Log reader error: {e}")
+            finally:
+                if process.stdout:
+                    process.stdout.close()
+                return_code = process.wait()
+                self.after(0, lambda: self._job_finished(name, return_code))
+
+        threading.Thread(target=read_output, daemon=True).start()
 
     def _run_remixer(self):
-        if self._process and self._process.poll() is None:
-            self._set_status("Remixer is already running.")
+        if self._job_running():
             return
         rp = self.BASE_DIR / "remixer.py"
         if not rp.exists():
@@ -605,44 +647,42 @@ class FloodGate(ctk.CTk):
         self.asset_ui.log(f"Format: {fmt}, Length: {self.config['settings']['clip_length']}s")
 
         try:
-            env = os.environ.copy()
-            env["PYTHONUNBUFFERED"] = "1"
-            env["PYTHONIOENCODING"] = "utf-8"
-
-            creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-            self._process = subprocess.Popen(
-                [sys.executable, "-u", str(rp)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                creationflags=creation_flags,
-                cwd=str(self.BASE_DIR),
-                env=env,
-                encoding='utf-8',
-                errors='replace'
-            )
-
-            def read_output():
-                try:
-                    for line in iter(self._process.stdout.readline, ''):
-                        if line:
-                            self.asset_ui.log(line.strip())
-                        else:
-                            break
-                except Exception as e:
-                    self.asset_ui.log(f"Log reader error: {e}")
-                finally:
-                    if self._process.stdout:
-                        self._process.stdout.close()
-                    return_code = self._process.wait()
-                    self.after(0, lambda: self._remixer_finished(return_code))
-
-            threading.Thread(target=read_output, daemon=True).start()
+            self._run_script(rp, [], "Remixer")
             self._set_status(f"Remixer launched — {self.config['num_renders']} renders.")
         except Exception as e:
             self.asset_ui.log(f"ERROR: {e}")
             self._set_status("Remixer failed to start.")
+
+    def _run_subtitles(self):
+        if self._job_running():
+            return
+        sp = self.BASE_DIR / "subtitles.py"
+        if not sp.exists():
+            messagebox.showerror("Error", "subtitles.py not found.")
+            return
+        src = filedialog.askopenfilename(
+            title="Choose a video or audio file to subtitle",
+            filetypes=[("Video / Audio", "*.mp4 *.mov *.mkv *.avi *.webm *.mp3 *.wav *.m4a *.aac"), ("All files", "*.*")])
+        if not src:
+            return
+        ui = self.asset_ui
+        style = SUBTITLE_STYLES[ui.sub_style_var.get()]
+        model = SUBTITLE_MODELS[ui.sub_model_var.get()]
+        args = [src, "--style", style, "--model", model, "--font", ui.cap_font_var.get()]
+        if ui.sub_srt_only_var.get():
+            args.append("--srt-only")
+        self.config["settings"]["subtitle_style"] = ui.sub_style_var.get()
+        self.config["settings"]["subtitle_model"] = ui.sub_model_var.get()
+        self._save_config()
+
+        ui.clear_log()
+        ui.log(f"=== Subtitles: {Path(src).name} ===")
+        try:
+            self._run_script(sp, args, "Subtitles")
+            self._set_status(f"Subtitling {Path(src).name}...")
+        except Exception as e:
+            ui.log(f"ERROR: {e}")
+            self._set_status("Subtitles failed to start.")
 
     # ------------------------------------------------------------------
     # Application close
