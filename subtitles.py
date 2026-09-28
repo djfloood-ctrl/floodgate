@@ -24,6 +24,12 @@ from pathlib import Path
 
 from remixer import FFMPEG, FFPROBE
 
+# Keep the app's log readable: no \r progress bars, symlink or token warnings.
+# huggingface_hub reads these once at import, so set them before faster-whisper loads.
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("HF_HUB_VERBOSITY", "error")
+
 BASE_DIR       = Path(__file__).parent
 CONFIG_PATH    = BASE_DIR / "config.json"
 OUTPUT_DIR     = BASE_DIR / "output"
@@ -91,16 +97,41 @@ def transcribe(src, model="small", language=None, log=print):
         log("   Install it with:  py -m pip install faster-whisper")
         sys.exit(2)
 
-    # The download progress bar redraws one line with \r, which the app's log can't show
-    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
-    log(f"🧠 Loading Whisper model '{model}' (downloads once on first use)...")
-    whisper = WhisperModel(model, device="auto", compute_type="int8")
-
     duration, _ = probe(src)
-    log(f"🎙️  Transcribing {Path(src).name} ({duration / 60:.1f} min)...")
+    log(f"🧠 Loading Whisper model '{model}' (downloads once on first use)...")
+    try:
+        whisper = _load_model(WhisperModel, model, "auto")
+        log(f"🎙️  Transcribing {Path(src).name} ({duration / 60:.1f} min)...")
+        words, info = _run_whisper(whisper, src, language, duration, log)
+    except RuntimeError as e:
+        # An NVIDIA GPU without the CUDA libraries (cuBLAS/cuDNN) fails only once
+        # transcription starts, so retry the whole pass on the CPU.
+        if not re.search(r"cuda|cublas|cudnn", str(e), re.IGNORECASE):
+            raise
+        log("⚠️  GPU libraries not available — using the CPU instead (slower).")
+        whisper = _load_model(WhisperModel, model, "cpu")
+        log(f"🎙️  Transcribing {Path(src).name} ({duration / 60:.1f} min)...")
+        words, info = _run_whisper(whisper, src, language, duration, log)
+
+    data = {"language": info.language, "model": model, "source": str(src), "words": words}
+    TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
+    with open(cache, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+    log(f"✅ Transcribed {len(words)} words (language: {info.language})")
+    return data
+
+
+def _load_model(WhisperModel, model, device):
+    """Use the downloaded copy when there is one (no network, no Hub warnings); otherwise download it."""
+    try:
+        return WhisperModel(model, device=device, compute_type="int8", local_files_only=True)
+    except FileNotFoundError:
+        return WhisperModel(model, device=device, compute_type="int8")
+
+
+def _run_whisper(whisper, src, language, duration, log):
     segments, info = whisper.transcribe(
         str(src), language=language, word_timestamps=True, vad_filter=True)
-
     words, last_pct = [], -10
     for seg in segments:
         for w in seg.words or []:
@@ -111,13 +142,7 @@ def transcribe(src, model="small", language=None, log=print):
         if pct >= last_pct + 10:
             log(f"         → {min(pct, 100)}%")
             last_pct = pct
-
-    data = {"language": info.language, "model": model, "source": str(src), "words": words}
-    TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
-    with open(cache, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False)
-    log(f"✅ Transcribed {len(words)} words (language: {info.language})")
-    return data
+    return words, info
 
 
 def words_between(words, start=0.0, end=None):
